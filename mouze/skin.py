@@ -234,6 +234,14 @@ def _split_strip(img: Image.Image, frames: int) -> list[Image.Image]:
 def load_source(data: bytes, ext: str, spec: dict | None = None) -> CursorSource:
     """Decode a cursor/image file.  ``spec`` holds manifest overrides."""
     spec = spec or {}
+    src = _load_source(data, ext, spec)
+    per_frame = spec.get("delays")
+    if per_frame and src.svg is None:
+        src.delays = [int(per_frame[min(i, len(per_frame) - 1)]) for i in range(len(src.frames))]
+    return src
+
+
+def _load_source(data: bytes, ext: str, spec: dict) -> CursorSource:
     ext = ext.lower()
     hotspot = spec.get("hotspot")
     delay = spec.get("delay")

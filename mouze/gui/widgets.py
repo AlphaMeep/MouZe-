@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..i18n import tr
 from ..qtrender import pil_to_qpixmap
 from ..roles import Role
 from ..skin import CursorAnim
@@ -163,8 +164,8 @@ class RoleGrid(QWidget):
             cell = QVBoxLayout()
             cell.setSpacing(2)
             prev = AnimatedPreview(box)
-            prev.setToolTip(role.label)
-            lbl = QLabel(role.label)
+            prev.setToolTip(tr(role.label))
+            lbl = QLabel(tr(role.label))
             lbl.setProperty("dim", True)
             lbl.setStyleSheet(f"color: {theme.TEXT_DIM}; font-size: 10px;")
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -280,7 +281,7 @@ class TestArea(QFrame):
         lay.setSpacing(6)
         self.zones = []
         for i, (role, label) in enumerate(self.ZONES):
-            z = QLabel(label)
+            z = QLabel(tr(label))
             z.setAlignment(Qt.AlignmentFlag.AlignCenter)
             z.setMinimumHeight(44)
             z.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)

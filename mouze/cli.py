@@ -58,6 +58,13 @@ def build_parser() -> argparse.ArgumentParser:
     im = sub.add_parser("import", help="import a cursor pack, theme, skin or image")
     im.add_argument("path")
     im.add_argument("--name")
+
+    mx = sub.add_parser("import-mousex", help="import your downloaded Mouse X (Steam Workshop) skins")
+    mx.add_argument("--list", action="store_true", help="only list what was found")
+    mx.add_argument("--online", action="store_true", help="look up item titles with the Steam Web API")
+    mx.add_argument("--folder", action="append", default=[], help="extra folder of skins to scan")
+    mx.add_argument("--all-apps", action="store_true", help="also scan other Steam cursor apps")
+    mx.add_argument("ids", nargs="*", help="only import these workshop item ids")
     return p
 
 
@@ -128,6 +135,33 @@ def main(argv: list[str] | None = None) -> int:
             dest = packs.export_preview_png(s, out, args.size)
         print(f"Exported '{s.name}' to {dest}")
         return 0
+    if args.cmd == "import-mousex":
+        from .formats import mousex
+        appids = tuple(mousex.KNOWN_APPS) if args.all_apps else (mousex.MOUSE_X_APPID,)
+        extra = [Path(f) for f in args.folder] + mousex.mouse_x_local_skin_dirs()
+        items = mousex.find_workshop_items(appids, extra)
+        if args.ids:
+            items = [i for i in items if i.item_id in args.ids]
+        if args.online:
+            mousex.lookup_titles(items)
+        if not items:
+            libs = ", ".join(str(p) for p in mousex.library_folders()) or "none found"
+            print(f"No downloaded Mouse X workshop skins found (Steam libraries: {libs}).")
+            return 1
+        for i in items:
+            print(f"{i.item_id:>14}  {i.app_name:14} {i.display_name}   [{i.path}]")
+        if args.list:
+            return 0
+        ok = 0
+        for i in items:
+            try:
+                dest = mousex.import_item(i, paths.skins_dir())
+                ok += 1
+                print(f"  imported -> {dest.name}")
+            except Exception as exc:  # noqa: BLE001
+                print(f"  {i.item_id}: failed ({exc})", file=sys.stderr)
+        print(f"Imported {ok} of {len(items)} item(s). Check hotspots in Studio > Pack Builder if needed.")
+        return 0 if ok else 1
     if args.cmd == "import":
         from .formats import packs
         try:

@@ -31,7 +31,7 @@ QListWidget#gallery::item:hover:!selected {{ background: {BG_2}; }}
 QFrame#panel, QGroupBox {{ background: {BG_2}; border: 1px solid {BORDER}; border-radius: 10px; }}
 QGroupBox {{ margin-top: 18px; padding: 12px 10px 10px 10px; font-weight: 600; }}
 QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 4px; color: {TEXT_DIM}; }}
-QGroupBox QWidget, QFrame#panel QWidget {{ background: transparent; }}
+QGroupBox QWidget, QFrame#panel QLabel {{ background: transparent; }}
 QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QTimeEdit, QKeySequenceEdit, QPlainTextEdit {{
     background: {BG_3}; border: 1px solid {BORDER}; border-radius: 6px; padding: 5px 8px;
     selection-background-color: {ACCENT};

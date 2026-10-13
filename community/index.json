@@ -1,0 +1,150 @@
+{
+  "name": "MouZe Community",
+  "description": "Skins shared by the MouZe community. MIT unless noted.",
+  "skins": [
+    {
+      "id": "sakura-glass",
+      "name": "Sakura Glass",
+      "author": "MouZe community",
+      "description": "Cherry-blossom pink glass.",
+      "category": "Glass",
+      "tags": [
+        "pink",
+        "glass",
+        "cute"
+      ],
+      "version": "1.0",
+      "updated": "2026-10-13",
+      "animated": false,
+      "url": "skins/sakura-glass.mouzeskin",
+      "preview": "previews/sakura-glass.png",
+      "license": "MIT"
+    },
+    {
+      "id": "lava-lamp",
+      "name": "Lava Lamp",
+      "author": "MouZe community",
+      "description": "Slowly flowing lava colours.",
+      "category": "Gradient",
+      "tags": [
+        "animated",
+        "retro",
+        "warm"
+      ],
+      "version": "1.0",
+      "updated": "2026-10-13",
+      "animated": true,
+      "url": "skins/lava-lamp.mouzeskin",
+      "preview": "previews/lava-lamp.png",
+      "license": "MIT"
+    },
+    {
+      "id": "deep-sea",
+      "name": "Deep Sea",
+      "author": "MouZe community",
+      "description": "Bioluminescent glow from the deep.",
+      "category": "Neon",
+      "tags": [
+        "blue",
+        "neon",
+        "animated"
+      ],
+      "version": "1.0",
+      "updated": "2026-10-13",
+      "animated": true,
+      "url": "skins/deep-sea.mouzeskin",
+      "preview": "previews/deep-sea.png",
+      "license": "MIT"
+    },
+    {
+      "id": "cyber-lime",
+      "name": "Cyber Lime",
+      "author": "MouZe community",
+      "description": "Hard-edged cyberpunk lime.",
+      "category": "Neon",
+      "tags": [
+        "green",
+        "neon",
+        "gaming"
+      ],
+      "version": "1.0",
+      "updated": "2026-10-13",
+      "animated": false,
+      "url": "skins/cyber-lime.mouzeskin",
+      "preview": "previews/cyber-lime.png",
+      "license": "MIT"
+    },
+    {
+      "id": "midnight-pumpkin",
+      "name": "Midnight Pumpkin",
+      "author": "MouZe community",
+      "description": "A pumpkin glow for spooky season.",
+      "category": "Seasonal",
+      "tags": [
+        "halloween",
+        "seasonal",
+        "animated"
+      ],
+      "version": "1.0",
+      "updated": "2026-10-13",
+      "animated": true,
+      "url": "skins/midnight-pumpkin.mouzeskin",
+      "preview": "previews/midnight-pumpkin.png",
+      "license": "MIT"
+    },
+    {
+      "id": "arctic-pixel",
+      "name": "Arctic Pixel",
+      "author": "MouZe community",
+      "description": "Chunky icy pixel art.",
+      "category": "Retro",
+      "tags": [
+        "pixel",
+        "retro",
+        "winter"
+      ],
+      "version": "1.0",
+      "updated": "2026-10-13",
+      "animated": false,
+      "url": "skins/arctic-pixel.mouzeskin",
+      "preview": "previews/arctic-pixel.png",
+      "license": "MIT"
+    },
+    {
+      "id": "aurora-borealis",
+      "name": "Aurora Borealis",
+      "author": "MouZe community",
+      "description": "Northern lights rippling across the pointer.",
+      "category": "Gradient",
+      "tags": [
+        "animated",
+        "green",
+        "winter"
+      ],
+      "version": "1.0",
+      "updated": "2026-10-13",
+      "animated": true,
+      "url": "skins/aurora-borealis.mouzeskin",
+      "preview": "previews/aurora-borealis.png",
+      "license": "MIT"
+    },
+    {
+      "id": "monochrome-sniper",
+      "name": "Monochrome Sniper",
+      "author": "MouZe community",
+      "description": "A crisp black-and-white scope for any background.",
+      "category": "Crosshair",
+      "tags": [
+        "crosshair",
+        "gaming",
+        "minimal"
+      ],
+      "version": "1.0",
+      "updated": "2026-10-13",
+      "animated": false,
+      "url": "skins/monochrome-sniper.mouzeskin",
+      "preview": "previews/monochrome-sniper.png",
+      "license": "MIT"
+    }
+  ]
+}

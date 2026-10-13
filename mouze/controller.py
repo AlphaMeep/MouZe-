@@ -67,6 +67,8 @@ class Controller(QObject):
     _hotkey = Signal(str)
     _apply_done = Signal(str, str, bool)  # skin id, message, ok
     _apply_idle = Signal()
+    _subs_done = Signal(list)
+    library_changed = Signal()
 
     def __init__(self, settings: Settings | None = None, library: SkinLibrary | None = None,
                  backend=None, parent=None):
@@ -98,6 +100,12 @@ class Controller(QObject):
         self._locator_timer = QTimer(self)
         self._locator_timer.setSingleShot(True)
         self._locator_timer.timeout.connect(self._maybe_stop_overlay)
+        self._display_timer = QTimer(self)
+        self._display_timer.setSingleShot(True)
+        self._display_timer.setInterval(1500)
+        self._display_timer.timeout.connect(self._on_display_changed)
+        self._watch_screens()
+        self._subs_done.connect(self._on_subscriptions_updated)
         atexit.register(self._emergency_restore)
 
     # ------------------------------------------------------------------ startup
@@ -115,6 +123,69 @@ class Controller(QObject):
         self.refresh_hotkeys()
         self.refresh_effects()
         self.refresh_shuffle()
+        if s["subscriptions"] and s["auto_update_subscriptions"]:
+            threading.Thread(target=self._update_subscriptions, name="mouze-subs", daemon=True).start()
+
+    # ------------------------------------------------------------ subscriptions
+    def _update_subscriptions(self) -> None:
+        from . import community
+        try:
+            names = community.update_subscriptions(self.settings, paths.skins_dir())
+        except Exception:  # noqa: BLE001
+            log.exception("subscription update failed")
+            names = []
+        self._subs_done.emit(names)
+
+    def _on_subscriptions_updated(self, names: list) -> None:
+        if names:
+            self.library.reload()
+            self.library_changed.emit()
+            self.status.emit(f"Updated {len(names)} subscribed skin(s): {', '.join(names)}")
+
+    # ------------------------------------------------------------- displays
+    def _watch_screens(self) -> None:
+        from PySide6.QtGui import QGuiApplication
+        app = QGuiApplication.instance()
+        if app is None:
+            return
+        app.screenAdded.connect(self._screen_added)
+        app.screenRemoved.connect(lambda *_: self._display_timer.start())
+        for screen in app.screens():
+            self._screen_added(screen, start=False)
+
+    def _screen_added(self, screen, start: bool = True) -> None:
+        screen.geometryChanged.connect(lambda *_: self._display_timer.start())
+        screen.logicalDotsPerInchChanged.connect(lambda *_: self._display_timer.start())
+        if start:
+            self._display_timer.start()
+
+    def _on_display_changed(self) -> None:
+        """Monitors or scaling changed: rebuild overlays and re-render cursors at the new DPI."""
+        if not self.settings["refresh_on_display_change"]:
+            return
+        if self.overlay is not None and self.overlay.running:
+            self.overlay.stop()
+            self.overlay.start()
+        if self.active_skin_id and self.backend.supports_native and not self._hidden:
+            self.apply_skin(self.active_skin_id, persist=False)
+        self.status.emit("Display change detected - cursors refreshed")
+
+    def restart(self) -> None:
+        """Relaunch MouZe (used by the Restart button and after changing language)."""
+        import sys
+
+        from PySide6.QtCore import QProcess
+        from PySide6.QtWidgets import QApplication
+
+        from .system.autostart import launch_command
+        cmd = [c for c in launch_command() if c != "--minimized"]
+        self.shutdown()
+        QProcess.startDetached(cmd[0], cmd[1:])
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
+        else:  # pragma: no cover
+            sys.exit(0)
 
     def shutdown(self) -> None:
         self.hotkeys.stop()
@@ -147,12 +218,39 @@ class Controller(QObject):
         if apply and skin_id == self.active_skin_id:
             self.apply_skin(skin_id, persist=False)
 
-    def size(self) -> int:
+    def size(self, skin_id: str | None = None) -> int:
+        """Effective size: profile rule > per-skin size > global size."""
         if self.override_rule and self.override_rule.get("size"):
             return int(self.override_rule["size"])
-        return int(self.settings["size"])
+        per = self.skin_size(skin_id or self.active_skin_id)
+        return per or int(self.settings["size"])
+
+    def skin_size(self, skin_id: str | None) -> int | None:
+        if not skin_id:
+            return None
+        v = self.settings["skin_sizes"].get(skin_id)
+        return int(v) if v else None
+
+    def set_skin_size(self, skin_id: str, size: int | None) -> None:
+        """Give one skin its own size (None = follow the global size)."""
+        if size:
+            self.settings["skin_sizes"][skin_id] = int(max(16, min(256, size)))
+        else:
+            self.settings["skin_sizes"].pop(skin_id, None)
+        self.settings.save()
+        self.settings_changed.emit()
+        if skin_id == self.active_skin_id:
+            self.apply_skin(skin_id, persist=False)
 
     def set_size(self, size: int) -> None:
+        sid = self.active_skin_id
+        if sid and self.skin_size(sid):
+            # The active skin has its own size: the size hotkeys/slider change that instead.
+            self.settings["skin_sizes"][sid] = int(max(16, min(256, size)))
+            self.settings.save()
+            self.settings_changed.emit()
+            self.apply_skin(sid, persist=False)
+            return
         self.settings["size"] = int(max(16, min(256, size)))
         self.settings.save()
         self.settings_changed.emit()
@@ -240,7 +338,7 @@ class Controller(QObject):
         self.apply_skin(pool[(idx + step) % len(pool)])
 
     def step_size(self, direction: int) -> None:
-        cur = int(self.settings["size"])
+        cur = self.size()
         if direction > 0:
             nxt = next((s for s in SIZES if s > cur), SIZES[-1])
         else:

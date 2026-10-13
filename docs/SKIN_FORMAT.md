@@ -50,6 +50,7 @@ Only `arrow` is required. If a role is missing, MouZe uses a sensible fallback i
 | `hotspot` | `[x, y]` of the click point, in the source image's pixels (SVG: viewBox units). For `.cur`/`.ani` files it is read from the file if you leave it out |
 | `frames` | Number of frames in a sprite strip (horizontal or vertical) |
 | `delay` | Milliseconds per frame. This overrides the delays in a GIF or ANI |
+| `delays` | A list of per-frame delays in milliseconds, for frames that run at different speeds |
 | `size` | The size the art was designed for. Defaults to the image's largest side. Used for SVG and for scaling |
 | `pixel_art` | `true` scales by whole multiples with no smoothing |
 

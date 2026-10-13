@@ -61,6 +61,13 @@ DEFAULTS: dict = {
         "locator": {"shake": True, "sensitivity": 5, "color": "#ff4081"},
     },
     "profiles": {"enabled": True, "rules": []},
+    "skin_sizes": {},            # per-skin size overrides (skin id -> px)
+    "language": "auto",
+    "silent_running": False,     # start hidden in the tray, no notifications
+    "catalogs": ["https://raw.githubusercontent.com/AlphaMeep/MouZe-/main/community/index.json"],
+    "subscriptions": {},
+    "auto_update_subscriptions": True,
+    "refresh_on_display_change": True,
     "shuffle": {"enabled": False, "minutes": 30, "favorites_only": True},
 }
 
@@ -68,7 +75,8 @@ DEFAULTS: dict = {
 def deep_merge(base: dict, override: dict) -> dict:
     out = copy.deepcopy(base)
     for k, v in (override or {}).items():
-        if isinstance(v, dict) and isinstance(out.get(k), dict) and k not in ("adjustments",):
+        if isinstance(v, dict) and isinstance(out.get(k), dict) and k not in ("adjustments", "skin_sizes",
+                                                                               "subscriptions"):
             out[k] = deep_merge(out[k], v)
         else:
             out[k] = copy.deepcopy(v)

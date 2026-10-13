@@ -51,7 +51,7 @@ version = { attr = "mouze.__version__" }
 include = ["mouze*"]
 
 [tool.setuptools.package-data]
-mouze = ["assets/*"]
+mouze = ["assets/*", "i18n/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

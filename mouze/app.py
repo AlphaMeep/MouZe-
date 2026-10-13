@@ -22,10 +22,14 @@ def run_gui(minimized: bool = False) -> int:
     from .gui.theme import QSS
 
     app.setStyleSheet(QSS)
+    from .i18n import set_language
+
     controller = Controller()
+    set_language(controller.settings["language"])
     window = MainWindow(controller)
     controller.start()
-    if not (minimized or controller.settings["start_minimized"]):
+    s = controller.settings
+    if not (minimized or s["start_minimized"] or s["silent_running"]):
         window.show()
     app.aboutToQuit.connect(lambda: window._really_quit or controller.shutdown())
     return app.exec()

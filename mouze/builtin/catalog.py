@@ -206,10 +206,61 @@ def _entries():
         add(f"Neon {RETICLE_NAMES[design]}", "Crosshair",
             {"pointer": f"reticle:{design}", "style": "neon", "glow": "#ff2bd6", "accent": "#ffffff"},
             ["crosshair", "gaming", "neon"], "Glowing crosshair pointer.")
+
+    # Seasonal -------------------------------------------------------------
+    for name, season, recipe, desc in SEASONAL:
+        add(name, "Seasonal", recipe, ["seasonal", season] + (["animated"] if recipe["style"] in
+                                                               ("pulse", "flow", "rgb") else []), desc)
     return e
 
 
-CATEGORIES = ["Classic", "Color", "Neon", "RGB", "Gradient", "Glass", "Retro", "Minimal", "Crosshair"]
+# (name, season tag, recipe, description) - the Discover page features the current season.
+SEASONAL = [
+    ("Spooky Pumpkin", "halloween", {"pointer": "classic", "style": "pulse", "glow": "#ff7a00", "accent": "#7cff00"},
+     "A jack-o'-lantern glow that flickers like candlelight."),
+    ("Spooky Ghost", "halloween", {"pointer": "modern", "style": "glass", "fill": "#e8f0ff", "accent": "#9c27b0"},
+     "A see-through little ghost of a cursor."),
+    ("Witching Hour", "halloween", {"pointer": "dart", "style": "neon", "glow": "#a64dff", "accent": "#7cff00"},
+     "Purple potion neon with a green bubble spinner."),
+    ("Candy Corn", "halloween", {"pointer": "modern", "style": "gradient",
+                                 "gradient": ["#ffffff", "#ffb300", "#ff6d00"], "outline": "#3e1f00",
+                                 "accent": "#ff6d00"}, "Trick-or-treat tricolour."),
+    ("Autumn Leaves", "autumn", {"pointer": "classic", "style": "flow",
+                                 "gradient": ["#b23a00", "#ff8f00", "#ffd54f"], "outline": "#2b1200",
+                                 "accent": "#ffd54f"}, "Warm autumn colours drifting across the pointer."),
+    ("Frost", "winter", {"pointer": "modern", "style": "glass", "fill": "#b3e5fc", "accent": "#ffffff"},
+     "Icy frosted glass."),
+    ("Snowfall", "winter", {"pointer": "sharp", "style": "outline", "fill": "#ffffff", "outline": "#4f83cc",
+                            "accent": "#b3e5fc"}, "Crisp white outline, like fresh snow."),
+    ("Festive", "christmas", {"pointer": "classic", "style": "gradient", "gradient": ["#d32f2f", "#2e7d32"],
+                              "outline": "#fff8e1", "accent": "#ffd54f"}, "Holiday red and green."),
+    ("New Year Gold", "newyear", {"pointer": "dart", "style": "flow", "gradient": ["#fff3b0", "#ffb300", "#8d6e00"],
+                                  "outline": "#2b1d00", "accent": "#ffffff"}, "Shimmering gold for the countdown."),
+    ("Sweetheart", "valentine", {"pointer": "modern", "style": "gradient", "gradient": ["#ff4f81", "#ffb3c6"],
+                                 "outline": "#4a0018", "accent": "#ffffff"}, "Valentine pinks."),
+    ("Spring Bloom", "spring", {"pointer": "modern", "style": "gradient", "gradient": ["#a8e063", "#f8b5d0"],
+                                "outline": "#1f3a12", "accent": "#ffffff"}, "Fresh leaves and blossoms."),
+    ("Summer Sun", "summer", {"pointer": "classic", "style": "pulse", "glow": "#ffcc00", "accent": "#ff6f00"},
+     "Bright, warm and glowing."),
+]
+
+# Month -> season tags featured on the Discover page.
+SEASON_BY_MONTH = {
+    1: ["winter", "newyear"], 2: ["valentine", "winter"], 3: ["spring"], 4: ["spring"], 5: ["spring"],
+    6: ["summer"], 7: ["summer"], 8: ["summer"], 9: ["autumn"], 10: ["halloween", "autumn"],
+    11: ["autumn"], 12: ["christmas", "winter", "newyear"],
+}
+
+# Hand-picked highlights for the Discover page.
+STAFF_PICKS = [
+    "builtin:rgb-rgb-chroma-classic", "builtin:neon-neon-dart-cyan", "builtin:glass-glass-clear",
+    "builtin:gradient-vaporwave", "builtin:retro-retro-white", "builtin:crosshair-scope-green",
+    "builtin:neon-pulse-magenta", "builtin:gradient-aurora-flow", "builtin:classic-modern-light-shadow",
+    "builtin:rgb-rgb-neon-dart", "builtin:minimal-dot-red", "builtin:glass-glass-smoke",
+]
+
+
+CATEGORIES = ["Classic", "Color", "Neon", "RGB", "Gradient", "Glass", "Retro", "Minimal", "Crosshair", "Seasonal"]
 
 
 @lru_cache(maxsize=1)

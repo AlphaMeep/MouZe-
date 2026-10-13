@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 
 from .. import paths
 from ..builtin.procedural import ANIMATED_STYLES, DEFAULT_RECIPE, POINTER_NAMES, STYLES, ProceduralSkin
+from ..i18n import tr
 from ..qtrender import pil_to_qpixmap
 from ..roles import Role, guess_role
 from ..skin import SUPPORTED_EXTS, CursorSource, SkinMeta, load_source, save_skin, slugify
@@ -52,19 +53,29 @@ class StudioPage(QWidget):
         self.c = controller
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 12, 16, 16)
-        t = QLabel("Studio")
+        t = QLabel(tr("Studio"))
         t.setObjectName("title")
         lay.addWidget(t)
         self.tabs = QTabWidget()
         self.designer = DesignerTab(self)
         self.builder = PackBuilderTab(self)
-        self.tabs.addTab(self.designer, "Designer")
-        self.tabs.addTab(self.builder, "Pack Builder")
+        self.tabs.addTab(self.designer, tr("Designer"))
+        self.tabs.addTab(self.builder, tr("Pack Builder"))
         lay.addWidget(self.tabs, 1)
 
     def remix(self, skin_id: str):
         self.tabs.setCurrentWidget(self.designer)
         self.designer.load_from(skin_id)
+
+    def edit(self, skin_id: str):
+        skin = self.c.library.get(skin_id)
+        if skin is None:
+            return
+        if getattr(skin, "recipe", None) is not None:
+            self.remix(skin_id)
+            return
+        self.tabs.setCurrentWidget(self.builder)
+        self.builder.load_existing(skin)
 
 
 # ============================================================================ Designer
@@ -93,41 +104,41 @@ class DesignerTab(QWidget):
         self.start.currentIndexChanged.connect(lambda _: self.start.currentData() and self.load_from(self.start.currentData()))
         self.pointer = QComboBox()
         for k, v in POINTER_NAMES.items():
-            self.pointer.addItem(v, k)
+            self.pointer.addItem(tr(v), k)
         self.style = QComboBox()
         for k, v in STYLES.items():
-            self.style.addItem(v, k)
+            self.style.addItem(tr(v), k)
         self.fill = ColorButton("#ffffff", alpha=True)
         self.outline = ColorButton("#000000", alpha=True)
         self.accent = ColorButton("#1e88e5")
         self.glow = ColorButton("#00e5ff")
         self.g1, self.g2, self.g3 = ColorButton("#ff512f"), ColorButton("#f09819"), ColorButton("#ffffff")
-        self.g3_on = QCheckBox("3rd")
+        self.g3_on = QCheckBox(tr("3rd"))
         grow = QHBoxLayout()
         for w in (self.g1, self.g2, self.g3, self.g3_on):
             grow.addWidget(w)
         grow.addStretch(1)
         self.width_s = LabeledSlider(0.5, 3.0, 1.5, 0.1, "{:.1f}")
-        self.shadow = QCheckBox("Drop shadow")
-        self.rainbow = QCheckBox("Rainbow (animated)")
+        self.shadow = QCheckBox(tr("Drop shadow"))
+        self.rainbow = QCheckBox(tr("Rainbow (animated)"))
         self.delay = LabeledSlider(20, 200, 50, 5, "{:.0f} ms")
-        form.addRow("Name", self.name)
-        form.addRow("Template", self.start)
-        form.addRow("Pointer shape", self.pointer)
-        form.addRow("Style", self.style)
-        form.addRow("Fill / tint", self.fill)
-        form.addRow("Outline", self.outline)
-        form.addRow("Accent", self.accent)
-        form.addRow("Glow (neon)", self.glow)
-        form.addRow("Gradient", grow)
-        form.addRow("Outline width", self.width_s)
+        form.addRow(tr("Name"), self.name)
+        form.addRow(tr("Template"), self.start)
+        form.addRow(tr("Pointer shape"), self.pointer)
+        form.addRow(tr("Style"), self.style)
+        form.addRow(tr("Fill / tint"), self.fill)
+        form.addRow(tr("Outline"), self.outline)
+        form.addRow(tr("Accent"), self.accent)
+        form.addRow(tr("Glow (neon)"), self.glow)
+        form.addRow(tr("Gradient"), grow)
+        form.addRow(tr("Outline width"), self.width_s)
         form.addRow(self.shadow)
         form.addRow(self.rainbow)
-        form.addRow("Frame delay", self.delay)
+        form.addRow(tr("Frame delay"), self.delay)
         btns = QHBoxLayout()
-        save = QPushButton("Save to library")
+        save = QPushButton(tr("Save to library"))
         save.clicked.connect(lambda: self.save(apply=False))
-        apply_btn = QPushButton("Save && apply")
+        apply_btn = QPushButton(tr("Save && apply"))
         apply_btn.setObjectName("primary")
         apply_btn.clicked.connect(lambda: self.save(apply=True))
         btns.addWidget(save)
@@ -137,14 +148,15 @@ class DesignerTab(QWidget):
 
         right = QVBoxLayout()
         bg = QHBoxLayout()
-        bg.addWidget(QLabel("Preview background"))
+        bg.addWidget(QLabel(tr("Preview background")))
         self.bg = QComboBox()
-        self.bg.addItems(["dark", "light", "checker"])
+        for key in ("dark", "light", "checker"):
+            self.bg.addItem(tr(key.capitalize()), key)
         bg.addWidget(self.bg)
         bg.addStretch(1)
         right.addLayout(bg)
         self.grid = RoleGrid(box=68, columns=6)
-        self.bg.currentTextChanged.connect(self.grid.set_background)
+        self.bg.currentIndexChanged.connect(lambda _: self.grid.set_background(self.bg.currentData()))
         right.addWidget(self.grid)
         self.test = TestArea()
         right.addWidget(self.test)
@@ -198,7 +210,7 @@ class DesignerTab(QWidget):
         skin = self.c.library.get(skin_id)
         if skin is None or getattr(skin, "recipe", None) is None:
             return
-        self.name.setText(f"{skin.name} Remix")
+        self.name.setText(tr("{name} Remix").format(name=skin.name))
         self.set_recipe(skin.recipe)
 
     def _changed(self, *_):
@@ -223,7 +235,7 @@ class DesignerTab(QWidget):
         self.studio.saved.emit(new.id)
         if apply:
             self.c.apply_skin(new.id)
-        self.c.status.emit(f"Saved '{new.name}' to your library")
+        self.c.status.emit(tr("Saved '{name}' to your library").format(name=new.name))
 
 
 # ========================================================================= Pack builder
@@ -304,14 +316,16 @@ class PackBuilderTab(QWidget):
         self.studio = studio
         self.c = studio.c
         self.entries: dict[Role, dict] = {}   # role -> {"path", "hotspot", "delay", "frames", "pixel_art"}
+        self.editing: Path | None = None       # skin folder being edited in place
+        self.editing_manifest: dict = {}
         root = QHBoxLayout(self)
 
         left = QVBoxLayout()
         meta = QFormLayout()
         self.name = QLineEdit("My Pack")
         self.author = QLineEdit("You")
-        meta.addRow("Name", self.name)
-        meta.addRow("Author", self.author)
+        meta.addRow(tr("Name"), self.name)
+        meta.addRow(tr("Author"), self.author)
         left.addLayout(meta)
         self.roles = QListWidget()
         for role in Role:
@@ -320,22 +334,33 @@ class PackBuilderTab(QWidget):
             self.roles.addItem(it)
         self.roles.currentRowChanged.connect(self._select)
         left.addWidget(self.roles, 1)
-        auto = QPushButton("Auto-fill from a folder…")
+        auto = QPushButton(tr("Auto-fill from a folder…"))
         auto.clicked.connect(self.autofill)
         left.addWidget(auto)
-        save = QPushButton("Save to library")
-        save.setObjectName("primary")
-        save.clicked.connect(self.save)
-        left.addWidget(save)
+        open_btn = QPushButton(tr("Open existing skin…"))
+        open_btn.setToolTip(tr("Edit a skin from your library (imported, Mouse X or Pack Builder skins)"))
+        open_btn.clicked.connect(self.open_existing)
+        left.addWidget(open_btn)
+        new_btn = QPushButton(tr("New pack"))
+        new_btn.clicked.connect(self.reset)
+        left.addWidget(new_btn)
+        self.save_btn = QPushButton(tr("Save to library"))
+        self.save_btn.setObjectName("primary")
+        self.save_btn.clicked.connect(self.save)
+        left.addWidget(self.save_btn)
+        self.save_new_btn = QPushButton(tr("Save as a new skin"))
+        self.save_new_btn.clicked.connect(lambda: self.save(as_new=True))
+        self.save_new_btn.setVisible(False)
+        left.addWidget(self.save_new_btn)
         root.addLayout(left)
 
         right = QVBoxLayout()
         row = QHBoxLayout()
-        self.file_label = QLabel("No image")
+        self.file_label = QLabel(tr("No image"))
         self.file_label.setProperty("dim", True)
-        choose = QPushButton("Choose image…")
+        choose = QPushButton(tr("Choose image…"))
         choose.clicked.connect(self.choose)
-        clear = QPushButton("Clear")
+        clear = QPushButton(tr("Clear"))
         clear.clicked.connect(self.clear)
         row.addWidget(choose)
         row.addWidget(clear)
@@ -344,7 +369,7 @@ class PackBuilderTab(QWidget):
         self.editor = HotspotEditor()
         self.editor.hotspotChanged.connect(self._hotspot_clicked)
         right.addWidget(self.editor, 1)
-        opts = QGroupBox("Options for this role")
+        opts = QGroupBox(tr("Options for this role"))
         f = QFormLayout(opts)
         self.hx = QSpinBox()
         self.hy = QSpinBox()
@@ -352,27 +377,38 @@ class PackBuilderTab(QWidget):
             s.setRange(0, 1024)
             s.valueChanged.connect(self._hotspot_spin)
         hrow = QHBoxLayout()
-        hrow.addWidget(QLabel("x"))
+        hrow.addWidget(QLabel(tr("x")))
         hrow.addWidget(self.hx)
-        hrow.addWidget(QLabel("y"))
+        hrow.addWidget(QLabel(tr("y")))
         hrow.addWidget(self.hy)
         hrow.addStretch(1)
         self.frames = QSpinBox()
         self.frames.setRange(1, 256)
-        self.frames.setToolTip("For sprite strips: how many frames are in the image")
+        self.frames.setToolTip(tr("For sprite strips: how many frames are in the image"))
         self.delay = QSpinBox()
         self.delay.setRange(0, 2000)
         self.delay.setSuffix(" ms")
         self.delay.setSpecialValueText("from file")
-        self.pixel = QCheckBox("Pixel art (scale without smoothing)")
-        f.addRow("Hotspot (click the image)", hrow)
-        f.addRow("Frames in strip", self.frames)
-        f.addRow("Frame delay", self.delay)
+        self.pixel = QCheckBox(tr("Pixel art (scale without smoothing)"))
+        f.addRow(tr("Hotspot (click the image)"), hrow)
+        f.addRow(tr("Frames in strip"), self.frames)
+        f.addRow(tr("Frame delay"), self.delay)
         f.addRow(self.pixel)
         self.frames.valueChanged.connect(self._opts)
         self.delay.valueChanged.connect(self._opts)
         self.pixel.toggled.connect(self._opts)
         right.addWidget(opts)
+        help_box = QGroupBox(tr("Help"))
+        hl = QVBoxLayout(help_box)
+        tip = QLabel(
+            "1. Pick a role on the left (Normal Select is required).  2. Choose an image: PNG, GIF, APNG, WebP, "
+            "AVIF, SVG, CUR or ANI.  3. Click the image to set the hotspot - the exact pixel that clicks.  "
+            "4. For sprite strips, set how many frames the image holds.  5. Save.  Roles you leave empty fall back "
+            "to a similar cursor.  Tip: name files like busy.gif or link.png and use Auto-fill.")
+        tip.setWordWrap(True)
+        tip.setProperty("dim", True)
+        hl.addWidget(tip)
+        right.addWidget(help_box)
         root.addLayout(right, 1)
         self.roles.setCurrentRow(0)
 
@@ -403,7 +439,7 @@ class PackBuilderTab(QWidget):
         for w in (self.hx, self.hy, self.frames, self.delay, self.pixel):
             w.blockSignals(True)
         if e is None:
-            self.file_label.setText("No image - this role will fall back to a similar one")
+            self.file_label.setText(tr("No image - this role will fall back to a similar one"))
             self.editor.set_image(None, (0, 0))
             self.hx.setValue(0)
             self.hy.setValue(0)
@@ -432,7 +468,7 @@ class PackBuilderTab(QWidget):
             self._set_icon(self.role(), img)
         except Exception as exc:  # noqa: BLE001
             self.editor.set_image(None, (0, 0))
-            self.file_label.setText(f"Could not read image: {exc}")
+            self.file_label.setText(tr("Could not read image: {error}").format(error=exc))
 
     def _set_icon(self, role: Role, img):
         for i in range(self.roles.count()):
@@ -456,7 +492,7 @@ class PackBuilderTab(QWidget):
         try:
             self.entries[self.role()] = self._load_entry(self.role(), Path(f))
         except Exception as exc:  # noqa: BLE001
-            QMessageBox.warning(self, "Can't use this file", str(exc))
+            QMessageBox.warning(self, tr("Can't use this file"), str(exc))
             return
         self._select(self.roles.currentRow())
 
@@ -466,7 +502,7 @@ class PackBuilderTab(QWidget):
         self._select(self.roles.currentRow())
 
     def autofill(self):
-        d = QFileDialog.getExistingDirectory(self, "Folder with cursor images", str(Path.home()))
+        d = QFileDialog.getExistingDirectory(self, tr("Folder with cursor images"), str(Path.home()))
         if not d:
             return
         n = 0
@@ -482,7 +518,7 @@ class PackBuilderTab(QWidget):
                     continue
         if not self.name.text().strip() or self.name.text() == "My Pack":
             self.name.setText(Path(d).name)
-        self.c.status.emit(f"Matched {n} image(s) to cursor roles by file name")
+        self.c.status.emit(tr("Matched {n} image(s) to cursor roles by file name").format(n=n))
         for role, e in self.entries.items():
             try:
                 src = self._source(e)
@@ -521,34 +557,137 @@ class PackBuilderTab(QWidget):
         e["pixel_art"] = self.pixel.isChecked()
         self._show(e)
 
-    def save(self):
+    # ------------------------------------------------------------ editing existing skins
+    def reset(self):
+        self.entries.clear()
+        self.editing = None
+        self.editing_manifest = {}
+        self.name.setText(tr("My Pack"))
+        self.author.setText(tr("You"))
+        for i in range(self.roles.count()):
+            self.roles.item(i).setIcon(QIcon())
+        self.save_btn.setText(tr("Save to library"))
+        self.save_new_btn.setVisible(False)
+        self._select(self.roles.currentRow())
+
+    def open_existing(self):
+        from PySide6.QtWidgets import QInputDialog
+        skins = [s for s in self.c.library if not s.is_builtin and getattr(s, "recipe", None) is None]
+        if not skins:
+            QMessageBox.information(self, tr("Pack Builder"), tr("There are no imported or image-based skins yet."))
+            return
+        names = [f"{s.name}  [{s.meta.category}]" for s in skins]
+        choice, ok = QInputDialog.getItem(self, tr("Open existing skin"), tr("Skin:"), names, 0, False)
+        if ok:
+            self.load_existing(skins[names.index(choice)])
+
+    def load_existing(self, skin):
+        import zipfile
+        if skin.path is None:
+            return
+        folder = skin.path
+        if folder.is_file():
+            cache = paths.config_dir() / "editing" / slugify(skin.name)
+            shutil.rmtree(cache, ignore_errors=True)
+            cache.mkdir(parents=True)
+            with zipfile.ZipFile(folder) as zf:
+                for member in zf.namelist():
+                    target = (cache / member).resolve()
+                    if str(target).startswith(str(cache.resolve())):
+                        zf.extract(member, cache)
+            found = next(iter(sorted(cache.rglob("skin.json"))), None)
+            folder = found.parent if found else cache
+            self.editing = None  # zipped skins are saved as a new folder skin
+        else:
+            self.editing = folder
+        manifest = json.loads((folder / "skin.json").read_text("utf-8"))
+        self.editing_manifest = manifest
+        self.entries.clear()
+        for i in range(self.roles.count()):
+            self.roles.item(i).setIcon(QIcon())
+        for role_name, spec in (manifest.get("cursors") or {}).items():
+            try:
+                role = Role(role_name)
+            except ValueError:
+                continue
+            spec = {"file": spec} if isinstance(spec, str) else dict(spec)
+            fname = spec.get("file") or (spec.get("files") or [None])[0]
+            if not fname or not (folder / fname).exists():
+                continue
+            path = folder / fname
+            hot = spec.get("hotspot")
+            if hot is None:
+                try:
+                    hot = load_source(path.read_bytes(), path.suffix).hotspot
+                except Exception:  # noqa: BLE001
+                    hot = (0, 0)
+            self.entries[role] = {
+                "path": str(path), "hotspot": (int(hot[0]), int(hot[1])), "frames": int(spec.get("frames", 1)),
+                "delay": int(spec.get("delay") or 0), "pixel_art": bool(spec.get("pixel_art")),
+                "hotspot_set": "hotspot" in spec,
+                "extra": {k: spec[k] for k in ("delays", "size") if k in spec},
+            }
+            try:
+                src = self._source(self.entries[role])
+                img = src.render(src.nominal).frames[0] if src.svg is not None else src.frames[0]
+                self._set_icon(role, img)
+            except Exception:  # noqa: BLE001
+                pass
+        self.name.setText(manifest.get("name") or skin.name)
+        self.author.setText(manifest.get("author") or "")
+        self.save_btn.setText(tr("Save changes") if self.editing else tr("Save to library"))
+        self.save_new_btn.setVisible(self.editing is not None)
+        self.roles.setCurrentRow(0)
+        self._select(0)
+        self.c.status.emit(tr("Editing '{name}'").format(name=self.name.text()))
+
+    def save(self, as_new: bool = False):
         if not self.entries:
-            QMessageBox.information(self, "Pack Builder", "Add at least one image first.")
+            QMessageBox.information(self, tr("Pack Builder"), tr("Add at least one image first."))
             return
         if Role.ARROW not in self.entries:
-            QMessageBox.information(self, "Pack Builder", "Please add an image for 'Normal Select'.")
+            QMessageBox.information(self, tr("Pack Builder"), tr("Please add an image for 'Normal Select'."))
             return
         name = self.name.text().strip() or "My Pack"
-        dest = unique_dir(paths.skins_dir() / slugify(name))
+        in_place = self.editing is not None and self.editing.is_dir() and not as_new
+        final = self.editing if in_place else unique_dir(paths.skins_dir() / slugify(name))
+        # Build in a staging folder first: in-place edits may read from the folder being replaced.
+        dest = unique_dir(paths.skins_dir() / f".staging-{slugify(name)}")
         dest.mkdir(parents=True)
         cursors = {}
         for role, e in self.entries.items():
             src = Path(e["path"])
             fname = f"{role.value}{src.suffix.lower()}"
             shutil.copyfile(src, dest / fname)
-            spec = {"file": fname, **self._spec(e)}
+            spec = {"file": fname, **e.get("extra", {}), **self._spec(e)}
+            if e.get("delay"):
+                spec.pop("delays", None)
             if not e.get("hotspot_set") and src.suffix.lower() in (".cur", ".ani"):
                 spec.pop("hotspot")
             cursors[role.value] = spec
-        manifest = {"format": 1, "name": name, "author": self.author.text().strip() or "Unknown",
-                    "category": "Custom", "tags": ["custom"], "cursors": cursors}
+        base = {k: v for k, v in self.editing_manifest.items() if k not in ("cursors", "generator")}
+        manifest = {"format": 1, "category": "Custom", "tags": ["custom"], **base, "name": name,
+                    "author": self.author.text().strip() or "Unknown", "cursors": cursors}
         (dest / "skin.json").write_text(json.dumps(manifest, indent=2), "utf-8")
         try:
-            skin = self.c.library.add_from_path(dest)
+            from ..skin import load_skin
+            load_skin(dest)
         except Exception as exc:  # noqa: BLE001
             shutil.rmtree(dest, ignore_errors=True)
-            QMessageBox.warning(self, "Could not save", str(exc))
+            QMessageBox.warning(self, tr("Could not save"), str(exc))
             return
+        if final.exists():
+            shutil.rmtree(final)
+        shutil.move(str(dest), final)
+        skin = self.c.library.add_from_path(final)
+        self.editing = final
+        self.editing_manifest = manifest
+        for role, e in self.entries.items():  # point entries at the saved copies
+            e["path"] = str(final / cursors[role.value]["file"])
+        self.save_btn.setText(tr("Save changes"))
+        self.save_new_btn.setVisible(True)
         self.studio.saved.emit(skin.id)
-        self.c.status.emit(f"Saved '{skin.name}' to your library")
+        if skin.id == self.c.active_skin_id:
+            self.c.apply_skin(skin.id, persist=False)
+        self.c.status.emit(tr("Saved '{name}' to your library").format(name=skin.name))
 

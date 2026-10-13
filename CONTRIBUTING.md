@@ -23,6 +23,13 @@ There are two ways to add a skin to the built-in library:
 
 Please **do not** submit skins that were copied from other apps, websites or Workshop pages, or skins that use characters and logos you don't own.
 
+## Translations
+
+UI strings are written in English and wrapped in `tr()`. Each language is a JSON file in `mouze/i18n/` that maps the English text to the translation.
+
+- To check every language is complete and its `{placeholders}` match, run `python scripts/i18n_strings.py`. A test enforces the same thing.
+- To add a language, copy `zh_CN.json`, translate the values and add the language code to `LANGUAGES` in `mouze/i18n/__init__.py`.
+
 ## Code layout
 
 | Path | What |
@@ -30,7 +37,9 @@ Please **do not** submit skins that were copied from other apps, websites or Wor
 | `mouze/roles.py` | The 17 cursor roles and how they map onto Windows and X11 |
 | `mouze/skin.py` | The skin model, `skin.json` loading/saving and image decoding |
 | `mouze/builtin/` | Procedural skins: vector geometry, styles and the catalog |
-| `mouze/formats/` | `.cur`/`.ani`/Xcursor codecs and pack import/export |
+| `mouze/formats/` | `.cur`/`.ani`/Xcursor codecs, pack import/export, other platforms (`platforms.py`), Mouse X / Steam Workshop import (`mousex.py`) |
+| `mouze/community.py` | Community catalogs: fetch, subscribe, auto-update |
+| `mouze/i18n/` | Translations |
 | `mouze/backends/` | Integration with the OS cursor (Windows registry + `SPI_SETCURSORS`, Linux Xcursor themes) |
 | `mouze/overlay/` | The click-through effects overlay |
 | `mouze/system/` | Hotkeys, pointer polling, foreground-app detection and autostart |

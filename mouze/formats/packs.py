@@ -5,10 +5,13 @@ Import understands:
     without an ``install.inf``.
   * Xcursor themes (``index.theme`` + ``cursors/``), folders or ``.tar.gz``.
   * MouZe skins (``skin.json`` folders / ``.mouzeskin``).
-  * Loose image files (PNG/GIF/APNG/WebP/AVIF/SVG/CUR/ANI).
+  * macOS Mousecape ``.cape``, Hyprland hyprcursor themes, xcursorgen theme
+    sources and CSS cursor packs (see :mod:`platforms`).
+  * Loose image files and numbered frame sequences (PNG/GIF/APNG/WebP/AVIF/
+    SVG/CUR/ANI), e.g. Mouse X workshop items or browser-extension packs.
 
 Export writes Windows packs (with a right-click-installable ``install.inf``),
-Xcursor themes and MouZe skins.
+Xcursor themes, Mousecape capes, CSS packs and MouZe skins.
 """
 
 from __future__ import annotations
@@ -28,7 +31,7 @@ from PIL import Image
 from ..imaging import Adjustments
 from ..roles import WINDOWS_SCHEME_ORDER, XCURSOR_NAMES, Role, guess_role
 from ..skin import SKIN_EXT, SUPPORTED_EXTS, FileSkin, Skin, SkinMeta, load_skin, load_source, save_skin, slugify
-from . import wincursor, xcursor
+from . import platforms, wincursor, xcursor
 
 XCURSOR_EXPORT_SIZES = (24, 32, 48, 64, 96)
 
@@ -181,62 +184,137 @@ def _write_imported(meta: SkinMeta, mapping: dict[Role, Path], dest_root: Path) 
     return dest
 
 
-def import_path(path: str | Path, skins_dir: Path, name: str | None = None) -> Path:
-    """Import anything we understand into ``skins_dir``.  Returns the new skin folder."""
+ARCHIVE_SUFFIXES = (".zip", SKIN_EXT, ".tar.gz", ".tgz", ".tar.xz", ".tar.bz2", ".tar", ".hlc")
+IMPORTABLE_FILE_EXTS = SUPPORTED_EXTS | {".cape", ".css", ".tif", ".tiff", ".xcur"}
+
+
+def detect_kind(root: Path) -> str:
+    """Name the format of an extracted folder (for messages and tests)."""
+    if next(iter(sorted(root.rglob("skin.json"))), None) is not None:
+        return "mouze"
+    if any(root.rglob("*.cape")):
+        return "mousecape"
+    if any((p / n).exists() for p in (root, *[d for d in root.iterdir() if d.is_dir()])
+           for n in ("manifest.hl", "manifest.toml")):
+        return "hyprcursor"
+    if (root / "cursors").is_dir() or any(root.rglob("index.theme")):
+        return "xcursor"
+    if platforms.find_xcursorgen_configs(root):
+        return "xcursorgen"
+    if _find_files(root, {".cur", ".ani"}):
+        return "windows"
+    if platforms.find_css(root):
+        return "css"
+    return "images"
+
+
+def import_path(path: str | Path, skins_dir: Path, name: str | None = None, *,
+                category: str | None = None, tags: list[str] | None = None, extra: dict | None = None) -> Path:
+    """Import anything we understand into ``skins_dir``.  Returns the new skin folder.
+
+    Understands MouZe skins, Windows packs, Xcursor themes, xcursorgen sources,
+    hyprcursor themes, Mousecape capes, CSS cursor packs, loose images and
+    frame sequences (see :mod:`mouze.formats.platforms`).
+    """
     path = Path(path)
     skins_dir.mkdir(parents=True, exist_ok=True)
+    decoded = None
+    mapping: dict[Role, Path] = {}
     with tempfile.TemporaryDirectory() as tmp:
         root = path
-        if path.is_file() and path.name.lower().endswith(
-                (".zip", SKIN_EXT, ".tar.gz", ".tgz", ".tar.xz", ".tar.bz2", ".tar")):
+        lower = path.name.lower()
+        if path.is_file() and lower.endswith(".hlc"):
+            shape_dir = Path(tmp) / "theme" / "hyprcursors"
+            shape_dir.mkdir(parents=True)
+            shutil.copyfile(path, shape_dir / path.name)
+            (Path(tmp) / "theme" / "manifest.hl").write_text(f"name = {path.stem}\n", "utf-8")
+            root = Path(tmp) / "theme"
+        elif path.is_file() and lower.endswith(ARCHIVE_SUFFIXES):
             root = _extract_archive(path, Path(tmp))
         if root.is_dir():
-            manifest = next(iter(sorted(root.rglob("skin.json"))), None)
-            if manifest is not None:
-                skin = load_skin(manifest.parent)  # validate
-                dest = skins_dir / slugify(name or skin.name)
-                i = 2
-                base = dest
-                while dest.exists():
-                    dest = Path(f"{base}-{i}")
-                    i += 1
+            kind = detect_kind(root)
+            if kind == "mouze":
+                manifest = next(iter(sorted(root.rglob("skin.json"))))
+                load_skin(manifest.parent)  # validate
+                dest = _unique(skins_dir / slugify(name or json.loads(manifest.read_text("utf-8")).get("name")
+                                                   or root.name))
                 shutil.copytree(manifest.parent, dest)
-                if name:
-                    data = json.loads((dest / "skin.json").read_text("utf-8"))
-                    data["name"] = name
-                    (dest / "skin.json").write_text(json.dumps(data, indent=2), "utf-8")
+                _patch_manifest(dest, name, category, tags, extra)
                 return dest
-            if (root / "cursors").is_dir() or any(root.rglob("index.theme")):
+            if kind == "mousecape":
+                decoded = platforms.read_mousecape(next(iter(sorted(root.rglob("*.cape")))).read_bytes())
+            elif kind == "hyprcursor":
+                theme = next(p for p in (root, *[d for d in root.iterdir() if d.is_dir()])
+                             if (p / "manifest.hl").exists() or (p / "manifest.toml").exists())
+                decoded = platforms.read_hyprcursor(theme)
+            elif kind == "xcursor":
                 theme_root = root if (root / "cursors").is_dir() else next(root.rglob("index.theme")).parent
                 meta, mapping = import_xcursor_theme(theme_root)
-            elif _find_files(root, {".cur", ".ani"}):
+            elif kind == "xcursorgen":
+                decoded = platforms.read_xcursorgen(root)
+            elif kind == "windows":
                 meta, mapping = import_windows_pack(root, name)
+            elif kind == "css":
+                decoded = platforms.read_css(platforms.find_css(root), root)
             else:
-                images = _find_files(root, SUPPORTED_EXTS)
-                if not images:
-                    raise ImportError_("nothing importable found")
-                mapping = {}
-                for f in images:
-                    role = guess_role(f.stem) or (Role.ARROW if Role.ARROW not in mapping else None)
-                    if role and role not in mapping:
-                        mapping[role] = f
-                meta = SkinMeta(name=name or root.name, author="Imported", category="Imported")
+                try:
+                    decoded = platforms.read_smart_folder(root, name)
+                except ValueError as exc:
+                    raise ImportError_("nothing importable found") from exc
         else:
-            if path.suffix.lower() not in SUPPORTED_EXTS and path.read_bytes()[:4] != xcursor.MAGIC:
+            suffix = path.suffix.lower()
+            data = path.read_bytes()
+            if suffix == ".cape":
+                decoded = platforms.read_mousecape(data)
+            elif suffix == ".css":
+                decoded = platforms.read_css([path], path.parent)
+            elif suffix not in IMPORTABLE_FILE_EXTS and data[:4] != xcursor.MAGIC:
                 raise ImportError_(f"unsupported file type: {path.suffix}")
-            role = guess_role(path.stem) or Role.ARROW
-            meta = SkinMeta(name=name or path.stem.replace("_", " ").title(), author="Imported",
-                            category="Imported")
-            mapping = {role: path}
-        if name:
-            meta.name = name
-        dest = _write_imported(meta, mapping, skins_dir)
+            else:
+                role = guess_role(path.stem) or Role.ARROW
+                meta = SkinMeta(name=name or path.stem.replace("_", " ").title(), author="Imported",
+                                category="Imported")
+                mapping = {role: path}
+        if decoded is not None:
+            meta, cursors = decoded
+            if name:
+                meta.name = name
+            dest = platforms.write_decoded(meta, cursors, skins_dir)
+        else:
+            if name:
+                meta.name = name
+            dest = _write_imported(meta, mapping, skins_dir)
+    _patch_manifest(dest, None, category, tags, extra)
     try:
         load_skin(dest)  # make sure it loads
     except Exception:
         shutil.rmtree(dest, ignore_errors=True)
         raise
     return dest
+
+
+def _unique(dest: Path) -> Path:
+    base, i = dest, 2
+    while dest.exists():
+        dest = Path(f"{base}-{i}")
+        i += 1
+    return dest
+
+
+def _patch_manifest(dest: Path, name, category, tags, extra) -> None:
+    if not (name or category or tags or extra):
+        return
+    mf = dest / "skin.json"
+    data = json.loads(mf.read_text("utf-8"))
+    if name:
+        data["name"] = name
+    if category:
+        data["category"] = category
+    if tags:
+        data["tags"] = sorted(set(data.get("tags") or []) | set(tags))
+    if extra:
+        data.update(extra)
+    mf.write_text(json.dumps(data, indent=2), "utf-8")
 
 
 # =============================================================================== export
@@ -333,6 +411,19 @@ def export_xcursor_theme(skin: Skin, dest_root: str | Path, theme_name: str | No
     return root
 
 
+def export_mousecape(skin: Skin, dest: str | Path, size: int = 32, adj: Adjustments | None = None) -> Path:
+    """macOS: a ``.cape`` file for Mousecape."""
+    dest = Path(dest)
+    if dest.suffix.lower() != ".cape":
+        dest = dest.with_suffix(".cape")
+    return platforms.write_mousecape(skin, dest, points=max(16, min(128, size)), adj=adj)
+
+
+def export_css(skin: Skin, dest: str | Path, size: int = 32, adj: Adjustments | None = None) -> Path:
+    """Web: PNG cursors + ``mouze-cursors.css``."""
+    return platforms.write_css_pack(skin, dest, size, adj)
+
+
 def export_skin(skin: Skin, dest: str | Path, size: int = 64, adj: Adjustments | None = None) -> Path:
     return save_skin(skin, dest, size=size, adj=adj)
 
@@ -357,5 +448,6 @@ def export_preview_png(skin: Skin, dest: str | Path, size: int = 48, adj: Adjust
 
 __all__ = [
     "ImportError_", "import_path", "export_windows_pack", "export_xcursor_theme", "export_skin",
+    "export_mousecape", "export_css", "detect_kind",
     "export_preview_png", "write_windows_cursor", "FileSkin", "load_source",
 ]

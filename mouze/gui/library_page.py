@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 from .. import paths
 from ..controller import SIZES
 from ..formats import packs
+from ..i18n import tr
 from ..imaging import Adjustments
 from ..qtrender import pil_to_qpixmap
 from ..roles import Role
@@ -64,6 +65,7 @@ def make_thumbnail(skin, frame: int = 0) -> QPixmap:
 
 class LibraryPage(QWidget):
     remix_requested = Signal(str)
+    edit_requested = Signal(str)
 
     def __init__(self, controller, parent=None):
         super().__init__(parent)
@@ -84,7 +86,7 @@ class LibraryPage(QWidget):
         left = QWidget()
         ll = QVBoxLayout(left)
         ll.setContentsMargins(12, 12, 4, 12)
-        t = QLabel("Library")
+        t = QLabel(tr("Library"))
         t.setObjectName("title")
         ll.addWidget(t)
         self.count_label = QLabel()
@@ -94,7 +96,7 @@ class LibraryPage(QWidget):
         self.categories.setObjectName("categories")
         self.categories.currentRowChanged.connect(lambda _: self.refilter())
         ll.addWidget(self.categories, 1)
-        imp = QPushButton("Import…")
+        imp = QPushButton(tr("Import…"))
         imp.setMenu(self._import_menu())
         ll.addWidget(imp)
         left.setMinimumWidth(150)
@@ -107,13 +109,13 @@ class LibraryPage(QWidget):
         ml.setContentsMargins(4, 12, 4, 4)
         bar = QHBoxLayout()
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Search skins, tags, authors…")
+        self.search.setPlaceholderText(tr("Search skins, tags, authors…"))
         self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(lambda _: self._search_timer.start())
-        self.animated_only = QCheckBox("Animated")
+        self.animated_only = QCheckBox(tr("Animated"))
         self.animated_only.toggled.connect(lambda _: self.refilter())
         self.sort = QComboBox()
-        self.sort.addItems(["Library order", "Name A–Z", "Name Z–A"])
+        self.sort.addItems([tr("Library order"), tr("Name A–Z"), tr("Name Z–A")])
         self.sort.currentIndexChanged.connect(lambda _: self.refilter())
         bar.addWidget(self.search, 1)
         bar.addWidget(self.animated_only)
@@ -137,6 +139,8 @@ class LibraryPage(QWidget):
         self.gallery.currentItemChanged.connect(self._on_select)
         self.gallery.itemDoubleClicked.connect(lambda it: self.c.apply_skin(it.data(Qt.ItemDataRole.UserRole)))
         self.gallery.itemEntered.connect(self._on_hover)
+        self.gallery.verticalScrollBar().valueChanged.connect(
+            lambda _: self._thumb_queue and not self._thumb_timer.isActive() and self._thumb_timer.start())
         self.gallery.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.gallery.customContextMenuRequested.connect(self._context_menu)
         ml.addWidget(self.gallery, 1)
@@ -177,14 +181,16 @@ class LibraryPage(QWidget):
             self.items[skin.id] = it
         self._thumb_queue = list(self.items)
         self._thumb_timer.start()
-        current = self.categories.currentItem().text().split("  ")[0] if self.categories.currentItem() else "All"
+        current = self._category()
         self.categories.blockSignals(True)
         self.categories.clear()
         groups = ["All", "Favorites", "Recent", "Animated", *self.c.library.categories()]
         for g in groups:
-            self.categories.addItem(g)
-        matches = self.categories.findItems(current, Qt.MatchFlag.MatchExactly)
-        self.categories.setCurrentItem(matches[0] if matches else self.categories.item(0))
+            item = QListWidgetItem(tr(g))
+            item.setData(Qt.ItemDataRole.UserRole, g)
+            self.categories.addItem(item)
+        row = groups.index(current) if current in groups else 0
+        self.categories.setCurrentRow(row)
         self.categories.blockSignals(False)
         self.refilter()
         target = select or self.c.active_skin_id or self.c.settings["skin"]
@@ -197,8 +203,20 @@ class LibraryPage(QWidget):
         active = "● " if skin.id == self.c.active_skin_id else ""
         return f"{active}{star}{skin.name}"
 
+    def _visible_pending(self) -> list[str]:
+        view = self.gallery.viewport().rect()
+        pending = set(self._thumb_queue)
+        out = []
+        for sid, it in self.items.items():
+            if sid in pending and not it.isHidden() and self.gallery.visualItemRect(it).intersects(view):
+                out.append(sid)
+        return out
+
     def _render_thumbs(self):
-        # Render a few per event-loop pass so the UI stays responsive.
+        # Render a few per event-loop pass so the UI stays responsive; visible tiles first.
+        first = self._visible_pending()
+        if first:
+            self._thumb_queue = first + [s for s in self._thumb_queue if s not in set(first)]
         for _ in range(6):
             if not self._thumb_queue:
                 self._thumb_timer.stop()
@@ -213,8 +231,12 @@ class LibraryPage(QWidget):
             except Exception as exc:  # noqa: BLE001
                 it.setToolTip(f"Could not render: {exc}")
 
+    def _category(self) -> str:
+        item = self.categories.currentItem()
+        return (item.data(Qt.ItemDataRole.UserRole) or item.text()) if item else "All"
+
     def refilter(self):
-        cat = self.categories.currentItem().text() if self.categories.currentItem() else "All"
+        cat = self._category()
         text = self.search.text()
         anim = True if self.animated_only.isChecked() else None
         if cat == "Favorites":
@@ -233,7 +255,7 @@ class LibraryPage(QWidget):
         order = self.sort.currentIndex()
         if order:
             self.gallery.sortItems(Qt.SortOrder.AscendingOrder if order == 1 else Qt.SortOrder.DescendingOrder)
-        self.count_label.setText(f"{len(visible)} of {len(self.items)} skins")
+        self.count_label.setText(tr("{n} of {total} skins").format(n=len(visible), total=len(self.items)))
 
     # -------------------------------------------------------------- selection
     def _on_select(self, it, _prev=None):
@@ -293,14 +315,16 @@ class LibraryPage(QWidget):
             return
         sid = it.data(Qt.ItemDataRole.UserRole)
         m = QMenu(self)
-        m.addAction("Apply", lambda: self.c.apply_skin(sid))
+        m.addAction(tr("Apply"), lambda: self.c.apply_skin(sid))
         fav = sid in self.c.settings["favorites"]
         m.addAction("Remove from favourites" if fav else "Add to favourites", lambda: self.toggle_favorite(sid))
         skin = self.c.library.get(sid)
         if skin is not None and getattr(skin, "recipe", None):
-            m.addAction("Remix in Designer", lambda: self.remix_requested.emit(sid))
+            m.addAction(tr("Remix in Designer"), lambda: self.remix_requested.emit(sid))
+        if skin is not None and not skin.is_builtin and getattr(skin, "recipe", None) is None:
+            m.addAction(tr("Edit in Pack Builder"), lambda: self.edit_requested.emit(sid))
         if skin is not None and not skin.is_builtin:
-            m.addAction("Delete", lambda: self.delete_skin(sid))
+            m.addAction(tr("Delete"), lambda: self.delete_skin(sid))
         m.exec(self.gallery.viewport().mapToGlobal(pos))
 
     def toggle_favorite(self, sid: str):
@@ -310,14 +334,14 @@ class LibraryPage(QWidget):
         if skin and sid in self.items:
             self.items[sid].setText(self._item_text(skin))
         self.detail.refresh_state()
-        if self.categories.currentItem() and self.categories.currentItem().text() == "Favorites":
+        if self._category() == "Favorites":
             self.refilter()
 
     def delete_skin(self, sid: str):
         skin = self.c.library.get(sid)
         if skin is None:
             return
-        if QMessageBox.question(self, "Delete skin", f"Delete '{skin.name}' from your library?") \
+        if QMessageBox.question(self, tr("Delete skin"), f"Delete '{skin.name}' from your library?") \
                 != QMessageBox.StandardButton.Yes:
             return
         self.c.library.delete(sid)
@@ -329,12 +353,13 @@ class LibraryPage(QWidget):
     # ------------------------------------------------------------------ import
     def _import_menu(self) -> QMenu:
         m = QMenu(self)
-        m.addAction("Files (cursor pack, theme, skin, images)…", self.import_files)
-        m.addAction("Folder (Windows pack / Xcursor theme)…", self.import_folder)
-        m.addAction("From URL…", self.import_url)
+        m.addAction(tr("Files (cursor pack, theme, skin, images)…"), self.import_files)
+        m.addAction(tr("Folder (Windows pack / Xcursor theme)…"), self.import_folder)
+        m.addAction(tr("From URL…"), self.import_url)
+        m.addAction(tr("From Mouse X / Steam Workshop…"), self.import_mousex)
         m.addSeparator()
-        m.addAction("Open skins folder", lambda: _open_folder(paths.skins_dir()))
-        m.addAction("Reload library", self.reload_library)
+        m.addAction(tr("Open skins folder"), lambda: _open_folder(paths.skins_dir()))
+        m.addAction(tr("Reload library"), self.reload_library)
         return m
 
     def reload_library(self):
@@ -343,24 +368,31 @@ class LibraryPage(QWidget):
 
     def import_files(self):
         files, _ = QFileDialog.getOpenFileNames(
-            self, "Import cursors", str(Path.home()),
+            self, tr("Import cursors"), str(Path.home()),
             "Cursors & packs (*.cur *.ani *.ico *.zip *.mouzeskin *.tar.gz *.tgz *.tar.xz *.png *.gif *.apng "
-            "*.webp *.avif *.svg);;All files (*)")
+            "*.webp *.avif *.svg *.cape *.css *.hlc *.tif *.tiff);;All files (*)")
         self.import_paths([Path(f) for f in files])
 
+    def import_mousex(self):
+        from .mousex_dialog import MouseXDialog
+        dlg = MouseXDialog(self.c, self)
+        if dlg.exec() and dlg.imported:
+            self.reload(select=dlg.imported[-1])
+            self.c.status.emit(tr("Imported {n} skin(s) from Mouse X").format(n=len(dlg.imported)))
+
     def import_folder(self):
-        d = QFileDialog.getExistingDirectory(self, "Import a cursor pack folder", str(Path.home()))
+        d = QFileDialog.getExistingDirectory(self, tr("Import a cursor pack folder"), str(Path.home()))
         if d:
             self.import_paths([Path(d)])
 
     def import_url(self):
-        url, ok = QInputDialog.getText(self, "Import from URL",
-                                       "Direct link to a .zip, .mouzeskin, .cur, .ani or image:")
+        url, ok = QInputDialog.getText(self, tr("Import from URL"),
+                                       tr("Direct link to a .zip, .mouzeskin, .cur, .ani or image:"))
         if not ok or not url.strip():
             return
         url = url.strip()
         if urllib.parse.urlparse(url).scheme not in ("http", "https"):
-            QMessageBox.warning(self, "Import", "Only http(s) links are supported.")
+            QMessageBox.warning(self, tr("Import"), tr("Only http(s) links are supported."))
             return
         try:
             with urllib.request.urlopen(url, timeout=20) as resp:  # noqa: S310 - scheme checked above
@@ -373,7 +405,7 @@ class LibraryPage(QWidget):
                 f.write_bytes(data)
                 self.import_paths([f])
         except Exception as exc:  # noqa: BLE001
-            QMessageBox.warning(self, "Import failed", str(exc))
+            QMessageBox.warning(self, tr("Import failed"), str(exc))
 
     def import_paths(self, items: list[Path]):
         done, errors = [], []
@@ -385,9 +417,9 @@ class LibraryPage(QWidget):
                 errors.append(f"{p.name}: {exc}")
         if done:
             self.reload(select=done[-1].id)
-            self.c.status.emit(f"Imported {len(done)} skin(s)")
+            self.c.status.emit(tr("Imported {n} skin(s)").format(n=len(done)))
         if errors:
-            QMessageBox.warning(self, "Some imports failed", "\n".join(errors))
+            QMessageBox.warning(self, tr("Some imports failed"), "\n".join(errors))
 
 
 def _open_folder(path: Path):
@@ -423,32 +455,36 @@ class DetailPanel(QWidget):
         lay.addLayout(head)
 
         btns = QHBoxLayout()
-        self.apply_btn = QPushButton("Apply")
+        self.apply_btn = QPushButton(tr("Apply"))
         self.apply_btn.setObjectName("primary")
         self.apply_btn.clicked.connect(self.apply)
-        self.fav_btn = QPushButton("☆ Favourite")
+        self.fav_btn = QPushButton(tr("☆ Favourite"))
         self.fav_btn.clicked.connect(lambda: self.skin and self.page.toggle_favorite(self.skin.id))
-        self.export_btn = QPushButton("Export")
+        self.export_btn = QPushButton(tr("Export"))
         self.export_btn.setMenu(self._export_menu())
-        self.remix_btn = QPushButton("Remix")
-        self.remix_btn.setToolTip("Open this skin in the Designer")
+        self.remix_btn = QPushButton(tr("Remix"))
+        self.remix_btn.setToolTip(tr("Open this skin in the Designer"))
         self.remix_btn.clicked.connect(lambda: self.skin and self.page.remix_requested.emit(self.skin.id))
-        self.delete_btn = QPushButton("Delete")
+        self.edit_btn = QPushButton(tr("Edit"))
+        self.edit_btn.setToolTip(tr("Open this skin in the Pack Builder to change images or hotspots"))
+        self.edit_btn.clicked.connect(lambda: self.skin and self.page.edit_requested.emit(self.skin.id))
+        self.delete_btn = QPushButton(tr("Delete"))
         self.delete_btn.setObjectName("danger")
         self.delete_btn.clicked.connect(lambda: self.skin and self.page.delete_skin(self.skin.id))
-        for b in (self.apply_btn, self.fav_btn, self.export_btn, self.remix_btn, self.delete_btn):
+        for b in (self.apply_btn, self.fav_btn, self.export_btn, self.remix_btn, self.edit_btn, self.delete_btn):
             btns.addWidget(b)
         btns.addStretch(1)
         lay.addLayout(btns)
 
         # previews
-        pv = QGroupBox("All cursors")
+        pv = QGroupBox(tr("All cursors"))
         pvl = QVBoxLayout(pv)
         bgrow = QHBoxLayout()
-        bgrow.addWidget(QLabel("Background"))
+        bgrow.addWidget(QLabel(tr("Background")))
         self.bg = QComboBox()
-        self.bg.addItems(["dark", "light", "checker"])
-        self.bg.currentTextChanged.connect(lambda t: self.grid.set_background(t))
+        for key in ("dark", "light", "checker"):
+            self.bg.addItem(tr(key.capitalize()), key)
+        self.bg.currentIndexChanged.connect(lambda _: self.grid.set_background(self.bg.currentData()))
         bgrow.addWidget(self.bg)
         bgrow.addStretch(1)
         pvl.addLayout(bgrow)
@@ -456,20 +492,26 @@ class DetailPanel(QWidget):
         pvl.addWidget(self.grid)
         lay.addWidget(pv)
 
-        tg = QGroupBox("Try it - hover the boxes")
+        tg = QGroupBox(tr("Try it - hover the boxes"))
         tl = QVBoxLayout(tg)
         self.test = TestArea()
         tl.addWidget(self.test)
         lay.addWidget(tg)
 
         # adjustments
-        ag = QGroupBox("Adjust (saved per skin)")
+        ag = QGroupBox(tr("Adjust (saved per skin)"))
         form = QFormLayout(ag)
         self.size = QComboBox()
         for s in SIZES:
             self.size.addItem(f"{s} px", s)
         self.size.currentIndexChanged.connect(self._size_changed)
-        form.addRow("Size (all skins)", self.size)
+        self.own_size = QCheckBox(tr("Only for this skin"))
+        self.own_size.setToolTip(tr("Give this skin its own size instead of the size shared by all skins"))
+        self.own_size.toggled.connect(self._own_size_toggled)
+        srow = QHBoxLayout()
+        srow.addWidget(self.size, 1)
+        srow.addWidget(self.own_size)
+        form.addRow(tr("Size"), srow)
         self.hue = LabeledSlider(-180, 180, 0, 1, "{:+.0f}°")
         self.sat = LabeledSlider(0, 2, 1, 0.05, "{:.2f}")
         self.bri = LabeledSlider(0.3, 1.7, 1, 0.05, "{:.2f}")
@@ -478,16 +520,16 @@ class DetailPanel(QWidget):
         for label, w in (("Hue", self.hue), ("Saturation", self.sat), ("Brightness", self.bri),
                          ("Opacity", self.opa), ("Animation speed", self.speed)):
             w.valueChanged.connect(self._adj_changed)
-            form.addRow(label, w)
+            form.addRow(tr(label), w)
         checks = QGridLayout()
-        self.mirror = QCheckBox("Left-handed (mirror)")
-        self.invert = QCheckBox("Invert colours")
-        self.gray = QCheckBox("Greyscale")
-        self.shadow = QCheckBox("Drop shadow")
-        self.outline = QCheckBox("Extra outline")
+        self.mirror = QCheckBox(tr("Left-handed (mirror)"))
+        self.invert = QCheckBox(tr("Invert colours"))
+        self.gray = QCheckBox(tr("Greyscale"))
+        self.shadow = QCheckBox(tr("Drop shadow"))
+        self.outline = QCheckBox(tr("Extra outline"))
         self.outline_color = ColorButton("#000000")
         self.outline_color.colorChanged.connect(lambda _: self._adj_changed())
-        self.tint_on = QCheckBox("Tint")
+        self.tint_on = QCheckBox(tr("Tint"))
         self.tint = ColorButton("#00e5ff")
         self.tint.colorChanged.connect(lambda _: self._adj_changed())
         for i, w in enumerate((self.mirror, self.invert, self.gray, self.shadow)):
@@ -506,7 +548,7 @@ class DetailPanel(QWidget):
         checks.addLayout(orow, 2, 0)
         checks.addLayout(trow, 2, 1)
         form.addRow(checks)
-        reset = QPushButton("Reset adjustments")
+        reset = QPushButton(tr("Reset adjustments"))
         reset.clicked.connect(self._reset)
         form.addRow(reset)
         lay.addWidget(ag)
@@ -524,10 +566,12 @@ class DetailPanel(QWidget):
 
     def _export_menu(self) -> QMenu:
         m = QMenu(self)
-        m.addAction("Windows cursor pack (.cur/.ani + install.inf)…", lambda: self.export("windows"))
-        m.addAction("Linux Xcursor theme…", lambda: self.export("xcursor"))
-        m.addAction("MouZe skin (.mouzeskin)…", lambda: self.export("skin"))
-        m.addAction("Preview image (.png)…", lambda: self.export("preview"))
+        m.addAction(tr("Windows cursor pack (.cur/.ani + install.inf)…"), lambda: self.export("windows"))
+        m.addAction(tr("Linux Xcursor theme…"), lambda: self.export("xcursor"))
+        m.addAction(tr("MouZe skin (.mouzeskin)…"), lambda: self.export("skin"))
+        m.addAction(tr("macOS cursor (.cape for Mousecape)…"), lambda: self.export("cape"))
+        m.addAction(tr("Website cursors (PNG + CSS)…"), lambda: self.export("css"))
+        m.addAction(tr("Preview image (.png)…"), lambda: self.export("preview"))
         return m
 
     # ---------------------------------------------------------------------- state
@@ -536,11 +580,14 @@ class DetailPanel(QWidget):
         self._loading = True
         self.title.setText(skin.name)
         tags = ", ".join(skin.meta.tags)
-        self.subtitle.setText(f"{skin.meta.category} · by {skin.meta.author}" + (f" · {tags}" if tags else ""))
+        self.subtitle.setText(f"{tr(skin.meta.category)} · " + tr("by {author}").format(author=skin.meta.author)
+                              + (f" · {tags}" if tags else ""))
         self.desc.setText(skin.meta.description)
         self.desc.setVisible(bool(skin.meta.description))
         adj = self.c.adjustments(skin.id)
-        idx = self.size.findData(int(self.c.settings["size"]))
+        own = self.c.skin_size(skin.id)
+        self.own_size.setChecked(bool(own))
+        idx = self.size.findData(int(own or self.c.settings["size"]))
         self.size.setCurrentIndex(idx if idx >= 0 else 2)
         self.hue.set_value(adj.hue)
         self.sat.set_value(adj.saturation)
@@ -558,6 +605,7 @@ class DetailPanel(QWidget):
             self.tint.set_color(adj.tint)
         self._loading = False
         self.remix_btn.setVisible(getattr(skin, "recipe", None) is not None)
+        self.edit_btn.setVisible(not skin.is_builtin and getattr(skin, "recipe", None) is None)
         self.delete_btn.setVisible(not skin.is_builtin)
         self.refresh_state()
         self._refresh_preview()
@@ -566,9 +614,9 @@ class DetailPanel(QWidget):
         if self.skin is None:
             return
         fav = self.skin.id in self.c.settings["favorites"]
-        self.fav_btn.setText("★ Favourite" if fav else "☆ Favourite")
+        self.fav_btn.setText(tr("★ Favourite") if fav else tr("☆ Favourite"))
         active = self.skin.id == self.c.active_skin_id
-        self.apply_btn.setText("Re-apply" if active else "Apply")
+        self.apply_btn.setText(tr("Re-apply") if active else tr("Apply"))
 
     def current_adj(self) -> Adjustments:
         return Adjustments(
@@ -598,11 +646,26 @@ class DetailPanel(QWidget):
             self._apply_timer.start()
 
     def _size_changed(self, *_):
-        if self._loading:
+        if self._loading or self.skin is None:
             return
         size = int(self.size.currentData())
-        if size != int(self.c.settings["size"]):
+        if self.own_size.isChecked():
+            self.c.set_skin_size(self.skin.id, size)
+        elif size != int(self.c.settings["size"]):
             self.c.set_size(size)
+        self._preview_timer.start()
+
+    def _own_size_toggled(self, on: bool):
+        if self._loading or self.skin is None:
+            return
+        if on:
+            self.c.set_skin_size(self.skin.id, int(self.size.currentData()))
+        else:
+            self.c.set_skin_size(self.skin.id, None)
+            self._loading = True
+            idx = self.size.findData(int(self.c.settings["size"]))
+            self.size.setCurrentIndex(idx if idx >= 0 else 2)
+            self._loading = False
         self._preview_timer.start()
 
     def _reset(self):
@@ -623,29 +686,39 @@ class DetailPanel(QWidget):
         base = str(Path.home() / skin.name.replace("/", "-"))
         try:
             if kind == "windows":
-                d = QFileDialog.getExistingDirectory(self, "Choose a folder for the cursor pack", str(Path.home()))
+                d = QFileDialog.getExistingDirectory(self, tr("Choose a folder for the cursor pack"), str(Path.home()))
                 if not d:
                     return
                 dest = packs.export_windows_pack(skin, Path(d) / skin.name.replace("/", "-"), size, adj)
             elif kind == "xcursor":
-                d = QFileDialog.getExistingDirectory(self, "Choose a folder for the Xcursor theme", str(Path.home()))
+                d = QFileDialog.getExistingDirectory(self, tr("Choose a folder for the Xcursor theme"), str(Path.home()))
                 if not d:
                     return
                 dest = packs.export_xcursor_theme(skin, d, adj=adj)
+            elif kind == "cape":
+                f, _ = QFileDialog.getSaveFileName(self, tr("Save Mousecape file"), base + ".cape", "Mousecape (*.cape)")
+                if not f:
+                    return
+                dest = packs.export_mousecape(skin, f, min(64, size), adj)
+            elif kind == "css":
+                d = QFileDialog.getExistingDirectory(self, tr("Choose a folder for the web cursors"), str(Path.home()))
+                if not d:
+                    return
+                dest = packs.export_css(skin, Path(d) / f"{skin.name.replace('/', '-')} (web)", min(64, size), adj)
             elif kind == "skin":
-                f, _ = QFileDialog.getSaveFileName(self, "Save skin", base + ".mouzeskin", "MouZe skin (*.mouzeskin)")
+                f, _ = QFileDialog.getSaveFileName(self, tr("Save skin"), base + ".mouzeskin", "MouZe skin (*.mouzeskin)")
                 if not f:
                     return
                 dest = packs.export_skin(skin, f, max(64, size), adj)
             else:
-                f, _ = QFileDialog.getSaveFileName(self, "Save preview", base + ".png", "PNG image (*.png)")
+                f, _ = QFileDialog.getSaveFileName(self, tr("Save preview"), base + ".png", "PNG image (*.png)")
                 if not f:
                     return
                 dest = packs.export_preview_png(skin, f, 64, adj)
         except Exception as exc:  # noqa: BLE001
-            QMessageBox.warning(self, "Export failed", str(exc))
+            QMessageBox.warning(self, tr("Export failed"), str(exc))
             return
-        self.c.status.emit(f"Exported to {dest}")
+        self.c.status.emit(tr("Exported to {path}").format(path=dest))
 
 
 __all__ = ["LibraryPage", "theme"]

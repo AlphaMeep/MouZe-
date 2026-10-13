@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..controller import SIZES
+from ..i18n import tr
 from ..system import foreground
 
 EFFECT_CHOICES = [("keep", "Leave as is"), ("on", "Turn on"), ("off", "Turn off")]
@@ -32,21 +33,21 @@ EFFECT_CHOICES = [("keep", "Leave as is"), ("on", "Turn on"), ("off", "Turn off"
 class RuleDialog(QDialog):
     def __init__(self, controller, rule: dict | None = None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Profile rule")
+        self.setWindowTitle(tr("Profile rule"))
         self.c = controller
         rule = dict(rule or {})
         form = QFormLayout(self)
         self.name = QLineEdit(rule.get("name", ""))
-        self.name.setPlaceholderText("e.g. Gaming")
+        self.name.setPlaceholderText(tr("e.g. Gaming"))
         self.process = QLineEdit(rule.get("process", ""))
-        self.process.setPlaceholderText("game.exe, *valorant*, code   (comma separated, wildcards ok)")
-        detect = QPushButton("Use the app in front in 3 s")
+        self.process.setPlaceholderText(tr("game.exe, *valorant*, code   (comma separated, wildcards ok)"))
+        detect = QPushButton(tr("Use the app in front in 3 s"))
         detect.clicked.connect(self._detect)
         prow = QHBoxLayout()
         prow.addWidget(self.process, 1)
         prow.addWidget(detect)
         self.time = QLineEdit(rule.get("time", ""))
-        self.time.setPlaceholderText("optional, e.g. 19:00-07:00")
+        self.time.setPlaceholderText(tr("optional, e.g. 19:00-07:00"))
         self.skin = QComboBox()
         self.skin.addItem("(keep main skin)", "")
         for s in sorted(self.c.library, key=lambda s: s.name.lower()):
@@ -60,18 +61,18 @@ class RuleDialog(QDialog):
         self.size.setCurrentIndex(max(0, self.size.findData(int(rule.get("size") or 0))))
         self.effects = QComboBox()
         for k, v in EFFECT_CHOICES:
-            self.effects.addItem(v, k)
+            self.effects.addItem(tr(v), k)
         self.effects.setCurrentIndex(max(0, self.effects.findData(rule.get("effects", "keep"))))
-        self.enabled = QCheckBox("Enabled")
+        self.enabled = QCheckBox(tr("Enabled"))
         self.enabled.setChecked(rule.get("enabled", True))
-        form.addRow("Name", self.name)
-        form.addRow("Apps", prow)
-        form.addRow("Time window", self.time)
-        form.addRow("Skin", self.skin)
-        form.addRow("Size", self.size)
-        form.addRow("Effects", self.effects)
+        form.addRow(tr("Name"), self.name)
+        form.addRow(tr("Apps"), prow)
+        form.addRow(tr("Time window"), self.time)
+        form.addRow(tr("Skin"), self.skin)
+        form.addRow(tr("Size"), self.size)
+        form.addRow(tr("Effects"), self.effects)
         form.addRow(self.enabled)
-        hint = QLabel("A rule needs apps, a time window, or both. The first matching rule wins.")
+        hint = QLabel(tr("A rule needs apps, a time window, or both. The first matching rule wins."))
         hint.setProperty("dim", True)
         form.addRow(hint)
         bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
@@ -81,7 +82,7 @@ class RuleDialog(QDialog):
         self.resize(560, 0)
 
     def _detect(self):
-        self.process.setPlaceholderText("switch to the app now…")
+        self.process.setPlaceholderText(tr("switch to the app now…"))
         QTimer.singleShot(3000, self._grab)
 
     def _grab(self):
@@ -107,16 +108,16 @@ class ProfilesPage(QWidget):
         self.c = controller
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 12, 16, 16)
-        t = QLabel("Profiles")
+        t = QLabel(tr("Profiles"))
         t.setObjectName("title")
         lay.addWidget(t)
-        info = QLabel("Switch skins automatically for specific apps or games, or by time of day "
-                      "(e.g. a dark skin at night). When no rule matches, your main skin is used.")
+        info = QLabel(tr("Switch skins automatically for specific apps or games, or by time of day "
+                      "(e.g. a dark skin at night). When no rule matches, your main skin is used."))
         info.setWordWrap(True)
         info.setProperty("dim", True)
         lay.addWidget(info)
 
-        self.enabled = QCheckBox("Enable automatic profiles")
+        self.enabled = QCheckBox(tr("Enable automatic profiles"))
         self.enabled.setChecked(self.c.settings["profiles"]["enabled"])
         self.enabled.toggled.connect(self._toggle)
         lay.addWidget(self.enabled)
@@ -142,10 +143,10 @@ class ProfilesPage(QWidget):
         row.addWidget(self.fg_label)
         lay.addLayout(row)
 
-        sh = QGroupBox("Skin shuffle")
+        sh = QGroupBox(tr("Skin shuffle"))
         f = QFormLayout(sh)
         cfg = self.c.settings["shuffle"]
-        self.sh_on = QCheckBox("Switch to a random skin every")
+        self.sh_on = QCheckBox(tr("Switch to a random skin every"))
         self.sh_on.setChecked(cfg["enabled"])
         self.sh_minutes = QSpinBox()
         self.sh_minutes.setRange(1, 24 * 60)
@@ -155,9 +156,9 @@ class ProfilesPage(QWidget):
         srow.addWidget(self.sh_on)
         srow.addWidget(self.sh_minutes)
         srow.addStretch(1)
-        self.sh_favs = QCheckBox("Only pick from favourites")
+        self.sh_favs = QCheckBox(tr("Only pick from favourites"))
         self.sh_favs.setChecked(cfg["favorites_only"])
-        now = QPushButton("Shuffle now")
+        now = QPushButton(tr("Shuffle now"))
         now.clicked.connect(self.c.shuffle_now)
         f.addRow(srow)
         f.addRow(self.sh_favs)
