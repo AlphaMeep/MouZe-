@@ -97,9 +97,14 @@ class WindowsBackend(Backend):
         bp.write_text(json.dumps(current, indent=2), "utf-8")
 
     def _reload(self) -> None:
-        if not user32.SystemParametersInfoW(SPI_SETCURSORS, 0, None, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE):
-            raise BackendError(f"SystemParametersInfo failed ({ctypes.get_last_error()})")
-        self._handles_at = 0.0
+        # Retry without the WM_SETTINGCHANGE broadcast, which can fail when some window is hung.
+        for flags in (SPIF_UPDATEINIFILE | SPIF_SENDCHANGE, SPIF_UPDATEINIFILE):
+            if user32.SystemParametersInfoW(SPI_SETCURSORS, 0, None, flags):
+                self._handles_at = 0.0
+                return
+        raise BackendError(
+            f"Windows refused to reload the cursors (error {ctypes.get_last_error()}). The new cursors are "
+            "saved and will appear after you sign out and back in.")
 
     # API ----------------------------------------------------------------------
     def apply(self, skin: Skin, size: int, adj: Adjustments | None = None) -> str:

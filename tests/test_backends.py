@@ -2,13 +2,13 @@ import sys
 
 import pytest
 
-from mouze.backends import get_backend
+from mouze.backends import BackendError, get_backend
 from mouze.builtin.catalog import builtin_skins
 from mouze.roles import Role
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows registry backend")
-def test_windows_apply_and_restore(qapp):  # pragma: no cover - runs on Windows CI
+def test_windows_apply_and_restore(qapp, monkeypatch):  # pragma: no cover - runs on Windows CI
     import winreg
 
     backend = get_backend()
@@ -21,14 +21,31 @@ def test_windows_apply_and_restore(qapp):  # pragma: no cover - runs on Windows 
             except FileNotFoundError:
                 return None
 
+    # Registry logic first, without asking Windows to reload (CI runners have no interactive desktop).
+    reloads = []
+    monkeypatch.setattr(backend, "_reload", lambda: reloads.append(1))
     before = read("Arrow")
     backend.apply(skin, 48)
     assert read("") == "MouZe"
     assert read("Arrow").endswith("arrow.ani")
+    assert read("Hand").endswith("link.ani")
     assert read("CursorBaseSize") == 48
-    assert backend.current_role() in (None, *Role)
     backend.restore_default(previous=True)
     assert read("Arrow") == before
+    assert len(reloads) == 2
+    monkeypatch.undo()
+
+    # Then the real reload, which needs an interactive session.
+    try:
+        backend.apply(skin, 32)
+    except BackendError as exc:
+        monkeypatch.setattr(backend, "_reload", lambda: None)
+        backend.restore_default(previous=True)  # undo the registry change
+        pytest.skip(f"no interactive desktop: {exc}")
+    try:
+        assert backend.current_role() in (None, *Role)
+    finally:
+        backend.restore_default(previous=True)
 
 
 @pytest.mark.skipif(not sys.platform.startswith("linux"), reason="Linux backend")
