@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mouze"
+dynamic = ["version"]
+description = "Open-source custom mouse cursors, cursor effects and a cursor designer for Windows and Linux"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "MouZe contributors" }]
+keywords = ["cursor", "mouse", "pointer", "theme", "xcursor", "ani", "cur", "customization"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Desktop Environment",
+]
+dependencies = [
+    "PySide6-Essentials>=6.5",
+    "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+# Global hotkeys and click effects on Linux/macOS (Windows needs nothing extra).
+input = ["pynput>=1.7"]
+dev = ["pytest>=7", "ruff>=0.4"]
+
+[project.scripts]
+mouze = "mouze.cli:main"
+
+[project.gui-scripts]
+mouze-gui = "mouze.app:main"
+
+[project.urls]
+Homepage = "https://github.com/AlphaMeep/MouZe-"
+Issues = "https://github.com/AlphaMeep/MouZe-/issues"
+
+[tool.setuptools.dynamic]
+version = { attr = "mouze.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["mouze*"]
+
+[tool.setuptools.package-data]
+mouze = ["assets/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501", "B008", "B905"]

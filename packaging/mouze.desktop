@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=MouZe
+GenericName=Cursor Customizer
+Comment=Custom mouse cursors, cursor effects and a cursor designer
+Exec=mouze
+Icon=mouze
+Terminal=false
+Categories=Settings;DesktopSettings;Utility;
+Keywords=cursor;mouse;pointer;theme;
