@@ -52,4 +52,6 @@ jobs:
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          name: MouZe ${{ github.ref_name }}
+          body_path: packaging/RELEASE_NOTES.md
           files: ${{ matrix.artifact }}.*
