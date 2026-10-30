@@ -47,6 +47,10 @@ UI strings are written in English and wrapped in `tr()`. Each language is a JSON
 | `mouze/gui/` | Qt widgets and pages |
 | `site/`, `scripts/build_site.py` | The website and its generator (`python scripts/build_site.py`, then serve `_site/`) |
 
+## Releasing
+
+Bump `__version__` in `mouze/__init__.py`, then either push a `vX.Y.Z` tag or run the **Release** workflow from the Actions tab with the version as input. The workflow builds Windows, Linux and macOS apps with PyInstaller and publishes them as a GitHub release, using `packaging/RELEASE_NOTES.md` as the description.
+
 ## Ground rules
 
 - No input hooks and no DLL injection. MouZe has to stay safe to use alongside anti-cheat software.
