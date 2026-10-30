@@ -26,6 +26,9 @@ def _find_skin(library, query: str):
     raise SystemExit(f"no skin matches '{query}' (try: mouze list)")
 
 
+EXPORT_FORMATS = ["windows", "xcursor", "cape", "css", "skin", "preview"]
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="mouze", description="MouZe - open-source custom cursors and cursor effects")
     p.add_argument("--version", action="version", version=f"MouZe {__version__}")
@@ -51,9 +54,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     ex = sub.add_parser("export", help="export a skin")
     ex.add_argument("skin")
-    ex.add_argument("-f", "--format", choices=["windows", "xcursor", "skin", "preview"], default="windows")
+    ex.add_argument("-f", "--format", choices=EXPORT_FORMATS, default="windows",
+                    help="windows (.cur/.ani + install.inf), xcursor (Linux theme), cape (macOS Mousecape), "
+                         "css (web cursors), skin (.mouzeskin) or preview (PNG sheet)")
     ex.add_argument("-o", "--output", required=True)
-    ex.add_argument("--size", type=int, default=48)
+    ex.add_argument("--size", type=int, default=None, help="cursor size in pixels (default: your current size)")
+    ex.add_argument("--raw", action="store_true", help="ignore the skin's saved adjustments (colours, outline, mirror...)")
 
     im = sub.add_parser("import", help="import a cursor pack, theme, skin or image")
     im.add_argument("path")
@@ -106,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
         from .backends import BackendError, get_backend
         from .imaging import Adjustments
         s = _find_skin(library, args.skin)
-        size = args.size or int(settings["size"])
+        size = max(16, min(256, args.size or settings.size_for(s.id)))
         backend = get_backend()
         try:
             print(backend.apply(s, size, Adjustments.from_dict(settings.adjustments_for(s.id))))
@@ -114,7 +120,11 @@ def main(argv: list[str] | None = None) -> int:
             print(exc, file=sys.stderr)
             return 1
         settings["skin"] = s.id
-        settings["size"] = size
+        if args.size:
+            if s.id in settings["skin_sizes"]:
+                settings["skin_sizes"][s.id] = size
+            else:
+                settings["size"] = size
         settings.save()
         return 0
     if args.cmd == "restore":
@@ -123,16 +133,28 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "export":
         from .formats import packs
+        from .imaging import Adjustments
         s = _find_skin(library, args.skin)
-        out = Path(args.output)
-        if args.format == "windows":
-            dest = packs.export_windows_pack(s, out, args.size)
-        elif args.format == "xcursor":
-            dest = packs.export_xcursor_theme(s, out.parent, out.name)
-        elif args.format == "skin":
-            dest = packs.export_skin(s, out, args.size)
-        else:
-            dest = packs.export_preview_png(s, out, args.size)
+        out = Path(args.output).expanduser()
+        # Same sizing rules as Library > Export in the GUI.
+        size = max(16, min(256, args.size or settings.size_for(s.id)))
+        adj = None if args.raw else Adjustments.from_dict(settings.adjustments_for(s.id))
+        try:
+            if args.format == "windows":
+                dest = packs.export_windows_pack(s, out, size, adj)
+            elif args.format == "xcursor":
+                dest = packs.export_xcursor_theme(s, out.parent, out.name, adj=adj)
+            elif args.format == "cape":
+                dest = packs.export_mousecape(s, out, min(64, size), adj)
+            elif args.format == "css":
+                dest = packs.export_css(s, out, min(64, size), adj)
+            elif args.format == "skin":
+                dest = packs.export_skin(s, out, max(64, size), adj)
+            else:
+                dest = packs.export_preview_png(s, out, max(16, min(256, args.size or 64)), adj)
+        except (OSError, ValueError) as exc:
+            print(f"Export failed: {exc}", file=sys.stderr)
+            return 1
         print(f"Exported '{s.name}' to {dest}")
         return 0
     if args.cmd == "import-mousex":

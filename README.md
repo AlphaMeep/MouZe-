@@ -106,8 +106,9 @@ On top of that, MouZe adds things that Mouse X's documentation does not mention:
 
 ## Install
 
-### Windows / Linux builds
+### Windows / Linux / macOS builds
 Download the latest build from the [Releases](https://github.com/AlphaMeep/MouZe-/releases) page, unzip it and run `MouZe`.
+The macOS build is unsigned (right-click → **Open** the first time). On macOS, MouZe can't change the system cursor, but effects, Studio and every export work.
 
 ### From source (any platform with Python 3.10+)
 
@@ -148,6 +149,8 @@ mouze apply "Gap Cross Green" --size 40    # set the system cursor
 mouze restore                              # back to what you had before
 mouze export "Vaporwave" -f windows -o ~/Vaporwave       # .cur/.ani + install.inf
 mouze export "Vaporwave" -f xcursor -o ~/.local/share/icons/Vaporwave
+mouze export "Vaporwave" -f cape -o Vaporwave.cape        # macOS Mousecape
+mouze export "Vaporwave" -f css -o ~/site/cursors         # PNGs + mouze-cursors.css for websites
 mouze import ~/Downloads/some-cursor-pack.zip   # also .cape, .css, hyprcursor, xcursorgen sources…
 mouze import-mousex --list                 # find your Mouse X Workshop skins
 mouze import-mousex --online               # import them all (looking up titles on Steam)
@@ -188,7 +191,12 @@ ruff check mouze tests
 python scripts/make_assets.py   # regenerate README images and icons
 python scripts/i18n_strings.py  # check translations are complete
 python scripts/build_community.py  # rebuild the starter community catalog
+python scripts/build_site.py    # build the website into _site/ (open _site/index.html via any web server)
 ```
+
+### Website
+
+[`site/`](site/) is a static website with a gallery where visitors can **try every skin live in the browser**: clicking a skin switches the page's cursors to it, using the same files `mouze export -f css` produces. Each skin also gets a downloadable web cursor pack, and the community catalog is mirrored alongside it. `scripts/build_site.py` renders it, and the *Website* workflow publishes it to GitHub Pages on every push to `main` (one-time setup: **Settings → Pages → Source: GitHub Actions**).
 
 The code is organised like this:
 
@@ -197,6 +205,7 @@ The code is organised like this:
 - `mouze/backends`: system-cursor integration for each OS.
 - `mouze/overlay`: the effects overlay.
 - `mouze/gui`: the Qt interface.
+- `site/`: the website (built by `scripts/build_site.py`).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 

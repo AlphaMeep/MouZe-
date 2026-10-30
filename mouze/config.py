@@ -122,6 +122,14 @@ class Settings:
     def adjustments_for(self, skin_id: str) -> dict:
         return dict(self.data["adjustments"].get(skin_id, {}))
 
+    def size_for(self, skin_id: str | None) -> int:
+        """A skin's own size if it has one, else the global size (profiles aside)."""
+        try:
+            per = int(self.data["skin_sizes"].get(skin_id) or 0) if skin_id else 0
+        except (TypeError, ValueError):
+            per = 0
+        return per or int(self.data["size"])
+
     def set_adjustments(self, skin_id: str, adj: dict) -> None:
         if adj:
             self.data["adjustments"][skin_id] = adj

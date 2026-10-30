@@ -45,6 +45,7 @@ UI strings are written in English and wrapped in `tr()`. Each language is a JSON
 | `mouze/system/` | Hotkeys, pointer polling, foreground-app detection and autostart |
 | `mouze/controller.py` | App state: applying skins, profiles, shuffle, hotkey actions |
 | `mouze/gui/` | Qt widgets and pages |
+| `site/`, `scripts/build_site.py` | The website and its generator (`python scripts/build_site.py`, then serve `_site/`) |
 
 ## Ground rules
 

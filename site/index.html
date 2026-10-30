@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MouZe · Custom cursors</title>
+<meta name="description" content="Free, open-source custom mouse cursors, cursor effects and a cursor designer for Windows and Linux. Try {{COUNT}} skins live in your browser.">
+<meta property="og:title" content="MouZe · Custom cursors">
+<meta property="og:description" content="Free, open-source custom cursors. Try every skin live in your browser.">
+<meta property="og:image" content="images/library.png">
+<meta name="theme-color" content="#121218">
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="style.css">
+<!-- The skin being tried. Swapped by app.js; it is MouZe's own CSS export of that skin. -->
+<link rel="stylesheet" id="live-cursors" href="data:text/css,">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#"><img src="icon.png" alt="" width="28" height="28"><span>MouZe</span></a>
+  <nav>
+    <a href="#gallery">Gallery</a>
+    <a href="#community">Community</a>
+    <a href="#features">Features</a>
+    <a href="{{REPO}}" rel="noopener">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-text">
+      <p class="eyebrow">Free &amp; open source · v{{VERSION}}</p>
+      <h1>Custom cursors that feel&nbsp;native.</h1>
+      <p class="lede">{{COUNT}} original skins, trails and click effects, a cursor designer, and importers for
+        Mouse&nbsp;X, Windows, Linux and macOS cursor packs. No hooks, no injection, no account.</p>
+      <div class="cta">
+        <a class="btn primary" href="{{REPO}}/releases" rel="noopener">Download for Windows &amp; Linux</a>
+        <a class="btn" href="#gallery">Try cursors here ↓</a>
+      </div>
+      <p class="small dim">Or from source: <code>pip install git+{{REPO}}.git</code></p>
+    </div>
+    <img class="hero-shot" src="images/library.png" alt="The MouZe library window" width="560" loading="eager">
+  </section>
+
+  <section id="gallery" class="gallery">
+    <div class="section-head">
+      <h2>Try every skin, right here</h2>
+      <p class="dim">Click a skin and your cursor on this page changes to it. Hover the zones below to see
+        each cursor role.</p>
+    </div>
+
+    <div class="tryout" aria-live="polite">
+      <div class="now">
+        <img id="now-thumb" src="icon.png" alt="" width="40" height="40">
+        <div>
+          <div class="dim small">Now trying</div>
+          <strong id="now-name">Your normal cursor</strong>
+        </div>
+        <div class="now-actions">
+          <button id="copy-cmd" class="btn small" disabled title="Copy the command that applies this skin">Copy <code>mouze apply</code></button>
+          <a id="dl-web" class="btn small" aria-disabled="true">Web cursors (.zip)</a>
+          <button id="reset" class="btn small ghost" disabled>Reset</button>
+        </div>
+      </div>
+      <div class="zones">
+        <a class="zone" href="#gallery" onclick="return false">Link</a>
+        <label class="zone zone-text"><span>Text</span><input type="text" placeholder="Type here…" aria-label="Text cursor test"></label>
+        <div class="zone mz-busy">Busy</div>
+        <div class="zone mz-working">Working</div>
+        <div class="zone mz-precision">Precision</div>
+        <div class="zone mz-pen">Handwriting</div>
+        <div class="zone mz-move">Move</div>
+        <div class="zone mz-help">Help</div>
+        <div class="zone mz-unavailable">Unavailable</div>
+        <div class="zone mz-size-ns">↕</div>
+        <div class="zone mz-size-ew">↔</div>
+        <div class="zone mz-size-nwse">⤡</div>
+        <div class="zone mz-size-nesw">⤢</div>
+      </div>
+    </div>
+
+    <div class="filters">
+      <input id="search" type="search" placeholder="Search skins, colours, tags…" aria-label="Search skins">
+      <div id="chips" class="chips" role="tablist" aria-label="Categories"></div>
+    </div>
+    <p id="result-count" class="dim small"></p>
+    <div id="grid" class="grid"></div>
+  </section>
+
+  <section id="community" class="community">
+    <div class="section-head">
+      <h2>Community skins</h2>
+      <p class="dim">Skins shared through MouZe's open catalog, an alternative to the Steam Workshop.
+        Subscribe in the app under <b>Discover</b>, or download a skin and drop it on the MouZe window.
+        Anyone can host a catalog; <a href="{{REPO}}/blob/main/docs/COMMUNITY.md" rel="noopener">here's how</a>.</p>
+    </div>
+    <div id="community-grid" class="community-grid"></div>
+  </section>
+
+  <section id="features" class="features">
+    <div class="section-head"><h2>What's in the app</h2></div>
+    <div class="feature-grid">
+      <article><h3>Native, safe, fast</h3><p>Cursors are applied the way <i>Mouse Properties</i> does it on Windows and as an Xcursor theme on Linux. Nothing touches other processes, so it's fine next to anti-cheat, and idle CPU use is zero.</p></article>
+      <article><h3>Effects</h3><p>Ribbon, comet, sparkle and ghost trails, click ripples and confetti, a highlight halo, a presentation spotlight and shake-to-find.</p></article>
+      <article><h3>Studio</h3><p>Design a full cursor set from a shape, style and colours, or build one from your own PNG, GIF, SVG, CUR or ANI art with a click-to-set hotspot editor.</p></article>
+      <article><h3>Bring your cursors</h3><p>Imports Mouse&nbsp;X Workshop skins, Windows <code>.cur</code>/<code>.ani</code> packs, Xcursor and hyprcursor themes, Mousecape <code>.cape</code> files and CSS cursor packs.</p></article>
+      <article><h3>Profiles &amp; hotkeys</h3><p>Switch skin, size and effects per app or game, or by time of day. Global hotkeys include a panic restore back to your original cursors.</p></article>
+      <article><h3>9 languages</h3><p>English, 简体中文, 繁體中文, Español, Français, Deutsch, Português, Русский and 日本語.</p></article>
+    </div>
+    <img class="wide-shot" src="images/effects-demo.png" alt="Trail, sparkle, comet, ripple, halo and locator effects" loading="lazy">
+  </section>
+</main>
+
+<footer>
+  <p>MouZe is MIT licensed, code and built-in skins alike. <a href="{{REPO}}" rel="noopener">Source on GitHub</a> · <a href="{{REPO}}/issues" rel="noopener">Report a bug</a></p>
+  <p class="dim small">Cursors on this page come from MouZe's web export (<code>mouze export &lt;skin&gt; -f css</code>). Browsers can't animate cursor images, so animated skins show their first frame here.</p>
+</footer>
+
+<div id="toast" class="toast" role="status" hidden></div>
+<script id="site-data" type="application/json">{{DATA}}</script>
+<script src="app.js"></script>
+</body>
+</html>
