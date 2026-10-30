@@ -362,5 +362,8 @@
   "Hue": "Matiz",
   "Saturation": "Saturação",
   "Brightness": "Brilho",
-  "Animation speed": "Velocidade da animação"
+  "Animation speed": "Velocidade da animação",
+  "Save format report…": "Salvar relatório de formato…",
+  "Save Mouse X format report": "Salvar relatório de formato do Mouse X",
+  "Saved the format report to {path}.": "Relatório de formato salvo em {path}."
 }

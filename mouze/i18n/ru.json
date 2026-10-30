@@ -362,5 +362,8 @@
   "Hue": "Тон",
   "Saturation": "Насыщенность",
   "Brightness": "Яркость",
-  "Animation speed": "Скорость анимации"
+  "Animation speed": "Скорость анимации",
+  "Save format report…": "Сохранить отчёт о формате…",
+  "Save Mouse X format report": "Сохранить отчёт о формате Mouse X",
+  "Saved the format report to {path}.": "Отчёт о формате сохранён в {path}."
 }

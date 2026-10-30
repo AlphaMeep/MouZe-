@@ -362,5 +362,8 @@
   "Hue": "Teinte",
   "Saturation": "Saturation",
   "Brightness": "Luminosité",
-  "Animation speed": "Vitesse d'animation"
+  "Animation speed": "Vitesse d'animation",
+  "Save format report…": "Enregistrer le rapport de format…",
+  "Save Mouse X format report": "Enregistrer le rapport de format Mouse X",
+  "Saved the format report to {path}.": "Rapport de format enregistré dans {path}."
 }

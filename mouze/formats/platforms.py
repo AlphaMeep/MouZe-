@@ -710,7 +710,8 @@ def read_smart_folder(root: Path, name: str | None = None) -> tuple[SkinMeta, di
                 file_hot = None
         meta_d = spec_for(files[0])
         hs = _hotspot_from(meta_d) if meta_d else None
-        if hs is None and len(out) == 0 and role == Role.ARROW:
+        if hs is None and role == Role.ARROW:
+            # a skin-wide hotspot hint belongs to the arrow, whichever file was read first
             hs = info.get("hotspot")
         if hs is None:
             hs = file_hot

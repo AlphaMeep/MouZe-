@@ -362,5 +362,8 @@
   "Hue": "色相",
   "Saturation": "彩度",
   "Brightness": "明るさ",
-  "Animation speed": "アニメーション速度"
+  "Animation speed": "アニメーション速度",
+  "Save format report…": "形式レポートを保存…",
+  "Save Mouse X format report": "Mouse X 形式レポートを保存",
+  "Saved the format report to {path}.": "形式レポートを {path} に保存しました。"
 }

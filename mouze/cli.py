@@ -70,11 +70,28 @@ def build_parser() -> argparse.ArgumentParser:
     mx.add_argument("--online", action="store_true", help="look up item titles with the Steam Web API")
     mx.add_argument("--folder", action="append", default=[], help="extra folder of skins to scan")
     mx.add_argument("--all-apps", action="store_true", help="also scan other Steam cursor apps")
+    mx.add_argument("--report", nargs="?", const="", default=None, metavar="FILE",
+                    help="save a report on how Mouse X stores skins on this computer (to improve the importer)")
     mx.add_argument("ids", nargs="*", help="only import these workshop item ids")
     return p
 
 
+def _attach_console() -> None:
+    """Let a windowed (PyInstaller) build print to the terminal it was started from on Windows."""
+    if sys.platform != "win32" or (sys.stdout is not None and sys.stderr is not None):
+        return
+    try:  # pragma: no cover - Windows only
+        import ctypes
+        if ctypes.windll.kernel32.AttachConsole(-1):  # ATTACH_PARENT_PROCESS
+            sys.stdout = open("CONOUT$", "w", encoding="utf-8", errors="replace")  # noqa: SIM115
+            sys.stderr = sys.stdout
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    if (sys.argv[1:] if argv is None else argv):
+        _attach_console()
     args = build_parser().parse_args(argv)
     if args.cmd is None:
         from .app import run_gui
@@ -160,6 +177,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "import-mousex":
         from .formats import mousex
         appids = tuple(mousex.KNOWN_APPS) if args.all_apps else (mousex.MOUSE_X_APPID,)
+        if args.report is not None:
+            from .formats import mousex_inspect
+            dest = mousex_inspect.write_report(args.report or None, [Path(f) for f in args.folder], appids)
+            print(f"Saved the Mouse X format report to {dest}")
+            return 0
         extra = [Path(f) for f in args.folder] + mousex.mouse_x_local_skin_dirs()
         items = mousex.find_workshop_items(appids, extra)
         if args.ids:

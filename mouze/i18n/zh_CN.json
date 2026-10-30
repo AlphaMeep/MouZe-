@@ -362,5 +362,8 @@
   "Hue": "色相",
   "Saturation": "饱和度",
   "Brightness": "亮度",
-  "Animation speed": "动画速度"
+  "Animation speed": "动画速度",
+  "Save format report…": "保存格式报告…",
+  "Save Mouse X format report": "保存 Mouse X 格式报告",
+  "Saved the format report to {path}.": "格式报告已保存到 {path}。"
 }

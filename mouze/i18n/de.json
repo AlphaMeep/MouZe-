@@ -362,5 +362,8 @@
   "Hue": "Farbton",
   "Saturation": "Sättigung",
   "Brightness": "Helligkeit",
-  "Animation speed": "Animationsgeschwindigkeit"
+  "Animation speed": "Animationsgeschwindigkeit",
+  "Save format report…": "Formatbericht speichern…",
+  "Save Mouse X format report": "Mouse-X-Formatbericht speichern",
+  "Saved the format report to {path}.": "Formatbericht gespeichert unter {path}."
 }

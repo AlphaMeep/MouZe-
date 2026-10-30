@@ -87,7 +87,7 @@ On top of that, MouZe adds things that Mouse X's documentation does not mention:
 
 | From | How |
 |---|---|
-| **Mouse X** (Steam Workshop) | Library → Import → **From Mouse X / Steam Workshop…** (or `mouze import-mousex`). MouZe finds every Steam library and lists the skins you subscribed to (`steamapps/workshop/content/4255580`). It can look up their titles online, and converts the ones you pick. *Mouse X* doesn't publish its skin format, so the importer reads the images, frame sequences, GIF/AVIF animations, CUR/ANI files and any metadata it finds. If a click point is off, fix it in the Pack Builder. Imported skins stay on your computer and still belong to their creators. |
+| **Mouse X** (Steam Workshop) | Library → Import → **From Mouse X / Steam Workshop…** (or `mouze import-mousex`). MouZe finds every Steam library and lists the skins you subscribed to (`steamapps/workshop/content/4255580`). It can look up their titles online, and converts the ones you pick. *Mouse X* doesn't publish its skin format, so the importer reads the images, frame sequences, GIF/AVIF animations, CUR/ANI files and any metadata it finds. If a click point is off, fix it in the Pack Builder. Imported skins stay on your computer and still belong to their creators. If a skin doesn't import correctly, click **Save format report…** in the same dialog (or run `mouze import-mousex --report`) and attach the report to an issue. It describes file layouts only, not the artwork. |
 | Other Steam cursor apps | Tick *Also scan other Steam cursor apps* in the same dialog, or use `mouze import-mousex --all-apps` |
 | Windows | `.cur` / `.ani` files and packs, with or without `install.inf`, as a folder or `.zip` |
 | Linux | Installed Xcursor themes (folder or `.tar.gz`) and theme **sources** (`xcursorgen` configs + PNGs, as used by most themes on GitHub) |
@@ -154,6 +154,7 @@ mouze export "Vaporwave" -f css -o ~/site/cursors         # PNGs + mouze-cursors
 mouze import ~/Downloads/some-cursor-pack.zip   # also .cape, .css, hyprcursor, xcursorgen sources…
 mouze import-mousex --list                 # find your Mouse X Workshop skins
 mouze import-mousex --online               # import them all (looking up titles on Steam)
+mouze import-mousex --report               # save a format report to help improve the importer
 ```
 
 ## Screenshots

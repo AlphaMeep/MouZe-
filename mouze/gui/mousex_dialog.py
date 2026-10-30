@@ -72,7 +72,8 @@ class MouseXDialog(QDialog):
         row = QHBoxLayout()
         for label, fn in ((tr("Scan again"), self.scan), (tr("Add folder…"), self.add_folder),
                           (tr("Look up names online"), self.lookup), (tr("Select all"), lambda: self._check_all(True)),
-                          (tr("Select none"), lambda: self._check_all(False))):
+                          (tr("Select none"), lambda: self._check_all(False)),
+                          (tr("Save format report…"), self.save_report)):
             b = QPushButton(label)
             b.clicked.connect(fn)
             row.addWidget(b)
@@ -135,6 +136,21 @@ class MouseXDialog(QDialog):
         self._fill()
         self.status.setText(tr("Got {n} name(s) from Steam.").format(n=n) if n
                             else tr("Could not reach Steam (or nothing to look up)."))
+
+    def save_report(self):
+        """Describe how Mouse X stores skins here, for improving the importer."""
+        from ..formats import mousex_inspect
+        f, _ = QFileDialog.getSaveFileName(self, tr("Save Mouse X format report"),
+                                           str(mousex_inspect.default_report_path()), "Markdown (*.md)")
+        if not f:
+            return
+        appids = tuple(mousex.KNOWN_APPS) if self.other_apps.isChecked() else (mousex.MOUSE_X_APPID,)
+        try:
+            dest = mousex_inspect.write_report(f, self.extra_dirs, appids)
+        except OSError as exc:
+            QMessageBox.warning(self, tr("Save Mouse X format report"), str(exc))
+            return
+        self.status.setText(tr("Saved the format report to {path}.").format(path=dest))
 
     def import_selected(self):
         chosen = [self.items[i] for i in range(self.list.count())
